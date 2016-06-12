@@ -167,7 +167,7 @@ struct libspectrum_ide_channel {
 
   /* One write cache for each drive */
   GHashTable *cache[2];
-
+  libspectrum_context_t *context;
 };
 
 /* Private function prototypes */
@@ -191,7 +191,8 @@ static void execute_command( libspectrum_ide_channel *chn,
 
 /* Initialise a libspectrum_ide_channel structure */
 libspectrum_ide_channel*
-libspectrum_ide_alloc( libspectrum_ide_databus databus )
+libspectrum_ide_alloc( libspectrum_context_t *context,
+                       libspectrum_ide_databus databus )
 {
   libspectrum_ide_channel *channel;
 
@@ -206,6 +207,7 @@ libspectrum_ide_alloc( libspectrum_ide_databus databus )
   channel->cache[ LIBSPECTRUM_IDE_SLAVE  ] =
     g_hash_table_new( g_int_hash, g_int_equal );
 
+  channel->context = context;
   return channel;
 }
 
@@ -243,7 +245,7 @@ libspectrum_ide_insert( libspectrum_ide_channel *chn,
   f = fopen( filename, "rb+" );
   if( !f ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
+      chn->context, LIBSPECTRUM_ERROR_UNKNOWN,
       "libspectrum_ide_insert: unable to open file '%s': %s", filename,
       strerror( errno )
     );
@@ -255,7 +257,7 @@ libspectrum_ide_insert( libspectrum_ide_channel *chn,
   if ( l != sizeof( libspectrum_hdf_header ) ) {
     fclose( f );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
+      chn->context, LIBSPECTRUM_ERROR_UNKNOWN,
       "libspectrum_ide_insert: unable to read HDF header from '%s'", filename
     );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -266,7 +268,7 @@ libspectrum_ide_insert( libspectrum_ide_channel *chn,
       drv->hdf.id != 0x1a                           ) {
     fclose( f );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      chn->context, LIBSPECTRUM_ERROR_CORRUPT,
       "libspectrum_ide_insert: '%s' is not a valid HDF file", filename
     );
     return LIBSPECTRUM_ERROR_CORRUPT;

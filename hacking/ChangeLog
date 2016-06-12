@@ -1072,3 +1072,10 @@ hacking/ChangeLog: the small scale changelog for libspectrum
 20160530 doc/libspectrum.txt: list more disk formats (Sergio).
 20160606 ChangeLog,README,configure.ac,doc/libspectrum.3: update release dates
          and mark this release as 1.2.0 (Fred).
+20160612 accessor.pl,bzip2.c,configure.ac,crypto.c,csw.c,dck.c,ide.c,
+         internals.h,libspectrum.c,libspectrum.h.in,make-perl.c,microdrive.c,
+         myglib/{ghash.c,gslist.c},plusd.c,pzx_read.c,rzx.c,sna.c,snapshot.c,
+         snp.c,sp.c,szx.c,tap.c,tape.c,tape_accessors.pl,tape_block.[ch],
+         tape_set.pl,test/{edges.c,test.c},tzx_read.c,tzx_write.c,
+         warajevo_read.c,wav.c,z80.c,z80em.c,zlib.c,zxs.c: add support for
+         thread-safety in libspectrum (from patch #356) (BogDan Vatra).

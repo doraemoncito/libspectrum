@@ -50,7 +50,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
 
   if( !filename ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_LOGIC,
+      tape->context, LIBSPECTRUM_ERROR_LOGIC,
       "libspectrum_wav_read: no filename provided - wav files can only be loaded from a file"
     );
     return LIBSPECTRUM_ERROR_LOGIC;
@@ -59,7 +59,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
   handle = afOpenFile( filename, "r", NULL );
   if( handle == AF_NULL_FILEHANDLE ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_LOGIC,
+      tape->context, LIBSPECTRUM_ERROR_LOGIC,
       "libspectrum_wav_read: audiofile failed to open file:%s", filename
     );
     return LIBSPECTRUM_ERROR_LOGIC;
@@ -68,7 +68,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
   if( afSetVirtualSampleFormat( handle, track, AF_SAMPFMT_UNSIGNED, 8 ) ) {
     afCloseFile( handle );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_LOGIC,
+      tape->context, LIBSPECTRUM_ERROR_LOGIC,
       "libspectrum_wav_read: audiofile failed to set virtual sample format"
     );
     return LIBSPECTRUM_ERROR_LOGIC;
@@ -77,7 +77,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
   if( afSetVirtualChannels( handle, track, 1 ) ) {
     afCloseFile( handle );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_LOGIC,
+      tape->context, LIBSPECTRUM_ERROR_LOGIC,
       "libspectrum_wav_read: audiofile failed to set virtual channel count"
     );
     return LIBSPECTRUM_ERROR_LOGIC;
@@ -96,7 +96,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
     libspectrum_free( buffer );
     afCloseFile( handle );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      tape->context, LIBSPECTRUM_ERROR_CORRUPT,
       "libspectrum_wav_read: can't calculate number of frames in audio file"
     );
     return LIBSPECTRUM_ERROR_CORRUPT;
@@ -106,7 +106,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
     libspectrum_free( buffer );
     afCloseFile( handle );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      tape->context, LIBSPECTRUM_ERROR_CORRUPT,
       "libspectrum_wav_read: empty audio file, nothing to load"
     );
     return LIBSPECTRUM_ERROR_CORRUPT;
@@ -116,14 +116,15 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
     libspectrum_free( buffer );
     afCloseFile( handle );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      tape->context, LIBSPECTRUM_ERROR_CORRUPT,
       "libspectrum_wav_read: read %d frames, but expected %lu\n", frames,
       (unsigned long)length
     );
     return LIBSPECTRUM_ERROR_CORRUPT;
   }
 
-  block = libspectrum_tape_block_alloc( LIBSPECTRUM_TAPE_BLOCK_RAW_DATA );
+  block = libspectrum_tape_block_alloc( tape->context,
+                                        LIBSPECTRUM_TAPE_BLOCK_RAW_DATA );
 
   /* 44100 Hz 79 t-states 22050 Hz 158 t-states */
   libspectrum_tape_block_set_bit_length( block,
@@ -156,7 +157,7 @@ libspectrum_wav_read( libspectrum_tape *tape, const char *filename )
   if( afCloseFile( handle ) ) {
     libspectrum_free( buffer );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
+      tape->context, LIBSPECTRUM_ERROR_UNKNOWN,
       "libspectrum_wav_read: failed to close audio file"
     );
     return LIBSPECTRUM_ERROR_UNKNOWN;

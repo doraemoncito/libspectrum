@@ -46,8 +46,9 @@ typedef libspectrum_error (*read_chunk_fn)( libspectrum_snap *snap,
 					    int parameter );
 
 static libspectrum_error
-inflate_block( libspectrum_byte **uncompressed, size_t *uncompressed_length,
-	       const libspectrum_byte **compressed, size_t compressed_length )
+inflate_block( libspectrum_context_t *context, libspectrum_byte **uncompressed,
+               size_t *uncompressed_length, const libspectrum_byte **compressed,
+               size_t compressed_length )
 {
 
 #ifdef HAVE_ZLIB_H
@@ -60,7 +61,7 @@ inflate_block( libspectrum_byte **uncompressed, size_t *uncompressed_length,
   /* First, look at the compression header */
   header_length = libspectrum_read_dword( compressed );
   if( header_length != 12 ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( context, LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_inflate_block: unknown header length %lu",
 			     (unsigned long)header_length );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -91,7 +92,7 @@ inflate_block( libspectrum_byte **uncompressed, size_t *uncompressed_length,
      Z_OK */
   if( error != Z_DATA_ERROR && error != Z_OK ) {
     libspectrum_free( *uncompressed ); libspectrum_free( zlib_buffer );
-    libspectrum_print_error( LIBSPECTRUM_ERROR_CORRUPT,
+    libspectrum_print_error( context, LIBSPECTRUM_ERROR_CORRUPT,
 			     "zxs_inflate_block: unexpected zlib error" );
     return LIBSPECTRUM_ERROR_CORRUPT;
   }
@@ -99,7 +100,7 @@ inflate_block( libspectrum_byte **uncompressed, size_t *uncompressed_length,
   if( *uncompressed_length != actual_length ) {
     libspectrum_free( *uncompressed ); libspectrum_free( zlib_buffer );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      context, LIBSPECTRUM_ERROR_CORRUPT,
       "zxs_inflate_block: block expanded to 0x%04lx, not the expected 0x%04lx bytes",
       actual_length, (unsigned long)*uncompressed_length
     );
@@ -114,7 +115,7 @@ inflate_block( libspectrum_byte **uncompressed, size_t *uncompressed_length,
   if( actual_crc32 != expected_crc32 ) {
     libspectrum_free( *uncompressed );
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      context, LIBSPECTRUM_ERROR_CORRUPT,
       "zxs_inflate_block: crc 0x%08x does not match expected 0x%08x",
       actual_crc32, expected_crc32
     );
@@ -142,7 +143,7 @@ read_riff_chunk( libspectrum_snap *snap, int *compression GCC_UNUSED,
 
   if( end - *buffer < 4 ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_CORRUPT,
       "zxs_read_riff_chunk: not enough data for form type"
     );
     return LIBSPECTRUM_ERROR_CORRUPT;
@@ -151,7 +152,8 @@ read_riff_chunk( libspectrum_snap *snap, int *compression GCC_UNUSED,
   memcpy( id, *buffer, 4 ); id[4] = '\0'; *buffer += 4;
 
   if( strcmp( id, "SNAP" ) ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( libspectrum_snap_context( snap ),
+                             LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_read_riff_chunk: unknown form type '%s'",
 			     id );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -174,7 +176,8 @@ read_fmtz_chunk( libspectrum_snap *snap, int *compression,
   libspectrum_word model;
 
   if( data_length != 8 ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( libspectrum_snap_context( snap ),
+                             LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_read_fmtz_chunk: unknown length %lu",
 			     (unsigned long)data_length );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -208,7 +211,7 @@ read_fmtz_chunk( libspectrum_snap *snap, int *compression,
 
   default:
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
+      libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_UNKNOWN,
       "zxs_read_fmtz_chunk: unknown machine type 0x%04x", model
     );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -228,7 +231,7 @@ read_fmtz_chunk( libspectrum_snap *snap, int *compression,
 
   default:
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
+      libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_UNKNOWN,
       "zxs_read_fmtz_chunk: unknown compression type 0x%04x", *compression
     );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -244,7 +247,8 @@ read_rz80_chunk( libspectrum_snap *snap, int *compression GCC_UNUSED,
 		 size_t data_length, int parameter GCC_UNUSED )
 {
   if( data_length != 33 ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( libspectrum_snap_context( snap ),
+                             LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_read_rZ80_chunk: unknown length %lu",
 			     (unsigned long)data_length );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -286,7 +290,7 @@ read_r048_chunk( libspectrum_snap *snap, int *compression GCC_UNUSED,
 {
   if( data_length != 9 ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
+      libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_UNKNOWN,
       "zxs_read_r048_chunk: unknown length %lu", (unsigned long)data_length
     );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -308,7 +312,8 @@ read_r128_chunk( libspectrum_snap *snap, int *compression GCC_UNUSED,
   size_t i;
 
   if( data_length != 18 ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( libspectrum_snap_context( snap ),
+                             LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_read_r128_chunk: unknown length %lu",
 			     (unsigned long)data_length );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -331,7 +336,8 @@ read_rplus3_chunk( libspectrum_snap *snap, int *compression GCC_UNUSED,
 		   int parameter GCC_UNUSED )
 {
   if( data_length != 1 ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( libspectrum_snap_context( snap ),
+                             LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_read_rplus3_chunk: unknown length %lu",
 			     (unsigned long)data_length );
     return LIBSPECTRUM_ERROR_UNKNOWN;
@@ -354,14 +360,14 @@ read_ram_chunk( libspectrum_snap *snap, int *compression,
 
   if( *compression ) {
 
-    error = inflate_block( &buffer2, &uncompressed_length,
-			   buffer, data_length );
+    error = inflate_block( libspectrum_snap_context( snap ), &buffer2,
+                           &uncompressed_length, buffer, data_length );
     if( error ) return error;
 
     if( uncompressed_length != 0x4000 ) {
       libspectrum_free( buffer2 );
       libspectrum_print_error(
-        LIBSPECTRUM_ERROR_CORRUPT,
+        libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_CORRUPT,
 	"zxs_read_ram_chunk: page %d does not expand to 0x4000 bytes", page
       );
       return LIBSPECTRUM_ERROR_MEMORY;
@@ -371,7 +377,7 @@ read_ram_chunk( libspectrum_snap *snap, int *compression,
 
     if( data_length != 0x4000 ) {
       libspectrum_print_error(
-        LIBSPECTRUM_ERROR_UNKNOWN,
+        libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_UNKNOWN,
 	"zxs_read_ram_chunk: page %d has unknown length %lu", page,
 	(unsigned long)data_length
       );
@@ -428,13 +434,14 @@ static struct read_chunk_t read_chunks[] = {
 };
 
 static libspectrum_error
-read_chunk_header( char *id, libspectrum_dword *data_length, 
+read_chunk_header( libspectrum_context_t *context, char *id,
+                   libspectrum_dword *data_length,
 		   const libspectrum_byte **buffer,
 		   const libspectrum_byte *end )
 {
   if( end - *buffer < 8 ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      context, LIBSPECTRUM_ERROR_CORRUPT,
       "zxs_read_chunk_header: not enough data for chunk header"
     );
     return LIBSPECTRUM_ERROR_CORRUPT;
@@ -456,12 +463,13 @@ read_chunk( libspectrum_snap *snap, const libspectrum_byte **buffer,
   size_t i; int done;
   int compression;
 
-  error = read_chunk_header( id, &data_length, buffer, end );
+  error = read_chunk_header( libspectrum_snap_context( snap ),id, &data_length,
+                             buffer, end );
   if( error ) return error;
 
   if( *buffer + data_length > end ) {
     libspectrum_print_error(
-      LIBSPECTRUM_ERROR_CORRUPT,
+      libspectrum_snap_context( snap ), LIBSPECTRUM_ERROR_CORRUPT,
       "zxs_read_chunk: chunk length goes beyond end of file"
     );
     return LIBSPECTRUM_ERROR_CORRUPT;
@@ -481,7 +489,8 @@ read_chunk( libspectrum_snap *snap, const libspectrum_byte **buffer,
   }
 
   if( !done ) {
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+    libspectrum_print_error( libspectrum_snap_context( snap ),
+                             LIBSPECTRUM_ERROR_UNKNOWN,
 			     "zxs_read_chunk: unknown chunk id '%s'", id );
     *buffer += data_length;
   }
