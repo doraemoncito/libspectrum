@@ -1,7 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-dnl Copyright (c) 1999-2013 Philip Kendall
-
-dnl $Id$
+dnl Copyright (c) 1999-2017 Philip Kendall
 
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -22,12 +20,12 @@ dnl
 dnl E-mail: philip-fuse@shadowmagic.org.uk
 
 dnl Package version
-m4_define([libspectrum_version], [1.2.2])
+m4_define([libspectrum_version], [1.3.4])
 
 dnl Product full version
 m4_define([libspectrum_major_version], [1])
-m4_define([libspectrum_minor_version], [2])
-m4_define([libspectrum_micro_version], [2])
+m4_define([libspectrum_minor_version], [3])
+m4_define([libspectrum_micro_version], [4])
 m4_define([libspectrum_nano_version],  [0])
 m4_define([libspectrum_full_version],
           [libspectrum_major_version.libspectrum_minor_version.libspectrum_micro_version.libspectrum_nano_version])
@@ -35,7 +33,7 @@ m4_define([libspectrum_rc_version],
           [libspectrum_major_version,libspectrum_minor_version,libspectrum_micro_version,libspectrum_nano_version])
 
 dnl Package info
-m4_define([libspectrum_copyright], ["(c) 1999-2016 Philip Kendall and others"])
+m4_define([libspectrum_copyright], ["(c) 1999-2017 Philip Kendall and others"])
 m4_define([libspectrum_url],
           [http://fuse-emulator.sourceforge.net/libspectrum.php])
 m4_define([libspectrum_bugreport],
@@ -181,8 +179,13 @@ AS_IF([test "$myglib" = no], [
     AC_MSG_ERROR([GLib not found])
   )
 ])
+AS_IF([test "$myglib" = yes], [
+  AC_CHECK_HEADERS(
+    stdatomic.h, [stdatomic_available=yes])
+])
 
 AM_CONDITIONAL(USE_MYGLIB, test "$myglib" = yes)
+AM_CONDITIONAL(HAVE_LOCK, test "$stdatomic_available" = yes)
 
 dnl If it appears we're using gcc as our compiler, turn on warnings
 if test "$ac_cv_c_compiler_gnu" = yes; then

@@ -1,8 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 ## Copyright (c) 2001-2016 Philip Kendall
 
-## $Id$
-
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
 ## the Free Software Foundation; either version 2 of the License, or
@@ -77,7 +75,7 @@ endif
 ## * Always increase the revision value.
 ## * Increase the age value only if the changes made to the ABI are backward
 ##   compatible.
-libspectrum_la_LDFLAGS = -version-info 12:2:4 -no-undefined @WINDRES_LDFLAGS@
+libspectrum_la_LDFLAGS = -version-info 13:7:5 -no-undefined @WINDRES_LDFLAGS@
 
 libspectrum_la_LIBADD = @AUDIOFILE_LIBS@ @GLIB_LIBS@ -lm
 
@@ -140,6 +138,5 @@ CLEANFILES = libspectrum.h \
 	     make-perl$(EXEEXT)
 
 include doc/Makefile.am
-include hacking/Makefile.am
 include myglib/Makefile.am
 include test/Makefile.am

@@ -2,8 +2,6 @@
    Copyright (c) 2001, 2002 Philip Kendall, Darren Salt
    Copyright (c) 2011-2015 Fredrick Meunier
 
-   $Id$
-
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
@@ -653,9 +651,9 @@ pzx_read_string( const libspectrum_byte **ptr, const libspectrum_byte *end,
     *(buffer + length++) = **ptr; (*ptr)++;
   }
 
-  /* Advance past the null terminator if it isn't the end of the block */
-  if( **ptr == '\0' && *ptr < end ) (*ptr)++;
-  
+  /* Advance past the null terminator discarding any garbage */
+  *ptr = end;
+
   *dest = libspectrum_new( char, (length + 1) );
 
   strncpy( *dest, buffer, length );

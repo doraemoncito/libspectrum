@@ -2,8 +2,6 @@
                 routines, but not by user code
    Copyright (c) 2001-2015 Philip Kendall, Darren Salt
 
-   $Id$
-
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
@@ -311,6 +309,18 @@ libspectrum_slist_cleanup( void );
 
 void
 libspectrum_hashtable_cleanup( void );
+
+#ifdef HAVE_STDATOMIC_H
+#include <stdatomic.h>
+
+void
+atomic_lock( atomic_char *lock_ptr );
+
+void
+atomic_unlock( atomic_char *lock_ptr );
+
+#endif				/* #ifdef HAVE_STDATOMIC_H */
+
 #endif				/* #ifndef HAVE_LIB_GLIB */
 
 #endif				/* #ifndef LIBSPECTRUM_INTERNALS_H */
