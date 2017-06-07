@@ -215,7 +215,7 @@ find_sample_rate( libspectrum_tape *tape )
     default:
       libspectrum_print_error(
         LIBSPECTRUM_ERROR_LOGIC,
-        "libspectrum_csw_write: unknown block type 0x%02x",
+        "find_sample_rate: unknown block type 0x%02x",
 	libspectrum_tape_block_type( block )
       );
 
@@ -336,8 +336,7 @@ libspectrum_csw_write( libspectrum_buffer *new_buffer, libspectrum_tape *tape )
   }
 
   /* header extension data is zero so on to the data */
-  libspectrum_buffer_write( new_buffer, libspectrum_buffer_get_data( body_buffer ),
-                libspectrum_buffer_get_data_size( body_buffer ) );
+  libspectrum_buffer_write_buffer( new_buffer, body_buffer );
 
 exit:
   libspectrum_buffer_free( body_buffer );
