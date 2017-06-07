@@ -223,6 +223,33 @@ test_2( void )
   return TEST_PASS;
 }
 
+/* Test for bug #88: writing empty .tap file causes crash */
+static test_return_t
+test_3( void )
+{
+  libspectrum_tape *tape;
+  libspectrum_byte *buffer = (libspectrum_byte*)1;
+  size_t length = 0;
+
+  tape = libspectrum_tape_alloc();
+
+  if( libspectrum_tape_write( &buffer, &length, tape, LIBSPECTRUM_ID_TAPE_TAP ) ) {
+    libspectrum_tape_free( tape );
+    return TEST_INCOMPLETE;
+  }
+
+  /* `buffer' should now have been set to NULL */
+  if( buffer ) {
+    fprintf( stderr, "%s: `buffer' was not NULL after libspectrum_tape_write()\n", progname );
+    libspectrum_tape_free( tape );
+    return TEST_FAIL;
+  }
+
+  if( libspectrum_tape_free( tape ) ) return TEST_INCOMPLETE;
+
+  return TEST_PASS;
+}
+
 /* Test for bug #102: invalid compressed file causes crash */
 static test_return_t
 test_4( void )
@@ -355,7 +382,8 @@ test_18( void )
 static test_return_t
 test_19( void )
 {
-  libspectrum_buffer *buffer = libspectrum_buffer_alloc();
+  libspectrum_byte *buffer = NULL;
+  size_t length = 0;
   libspectrum_tape *tape;
   const char *filename = DYNAMIC_TEST_PATH( "complete-tzx.tzx" );
   test_return_t r;
@@ -363,14 +391,15 @@ test_19( void )
   r = load_tape( &tape, filename, LIBSPECTRUM_ERROR_NONE );
   if( r ) return r;
 
-  if( libspectrum_tape_write( buffer, tape, LIBSPECTRUM_ID_TAPE_TAP ) ) {
+  if( libspectrum_tape_write( &buffer, &length, tape,
+                              LIBSPECTRUM_ID_TAPE_TAP ) ) {
     fprintf( stderr, "%s: writing `%s' to a .tap file was not successful\n",
              progname, filename );
     libspectrum_tape_free( tape );
     return TEST_INCOMPLETE;
   }
 
-  libspectrum_buffer_free( buffer );
+  libspectrum_free( buffer );
 
   if( libspectrum_tape_free( tape ) ) return TEST_INCOMPLETE;
 
@@ -431,7 +460,6 @@ static test_return_t
 test_23( void )
 {
   libspectrum_byte *buffer = NULL;
-  libspectrum_buffer *mdr_buffer;
   size_t filesize = 0, length;
   libspectrum_microdrive *mdr;
   const char *filename = STATIC_TEST_PATH( "writeprotected.mdr" );
@@ -452,19 +480,15 @@ test_23( void )
     return TEST_INCOMPLETE;
   }
 
-  libspectrum_free( buffer );
-  mdr_buffer = libspectrum_buffer_alloc();
+  libspectrum_free( buffer ); buffer = NULL;
 
-  libspectrum_microdrive_mdr_write( mdr, mdr_buffer );
+  libspectrum_microdrive_mdr_write( mdr, &buffer, &length );
 
   libspectrum_microdrive_free( mdr );
 
-  length = libspectrum_buffer_get_data_size( mdr_buffer );
-  r = ( length == filesize &&
-        libspectrum_buffer_get_data( mdr_buffer )[ length - 1 ] == 1 ) ?
-    TEST_PASS : TEST_FAIL;
+  r = ( length == filesize && buffer[ length - 1 ] == 1 ) ? TEST_PASS : TEST_FAIL;
 
-  libspectrum_buffer_free( mdr_buffer );
+  libspectrum_free( buffer );
 
   return r;
 }
@@ -543,24 +567,18 @@ test_25( void )
 {
   const char *filename = STATIC_TEST_PATH( "empty.z80" );
   libspectrum_byte *buffer = NULL;
-  libspectrum_byte *ptr;
   size_t filesize = 0, length = 0;
   libspectrum_snap *snap;
   int flags;
   test_return_t r = TEST_INCOMPLETE;
-  libspectrum_buffer *new_buffer = libspectrum_buffer_alloc();
 
-  if( read_file( &buffer, &filesize, filename ) ) {
-    libspectrum_buffer_free( new_buffer );
-    return TEST_INCOMPLETE;
-  }
+  if( read_file( &buffer, &filesize, filename ) ) return TEST_INCOMPLETE;
 
   snap = libspectrum_snap_alloc();
 
   if( libspectrum_snap_read( snap, buffer, filesize, LIBSPECTRUM_ID_UNKNOWN,
 			     filename ) != LIBSPECTRUM_ERROR_NONE ) {
     fprintf( stderr, "%s: reading `%s' failed\n", progname, filename );
-    libspectrum_buffer_free( new_buffer );
     libspectrum_snap_free( snap );
     libspectrum_free( buffer );
     return TEST_INCOMPLETE;
@@ -569,7 +587,7 @@ test_25( void )
   libspectrum_free( buffer );
   buffer = NULL;
 
-  if( libspectrum_snap_write( new_buffer, &flags, snap,
+  if( libspectrum_snap_write( &buffer, &length, &flags, snap,
                               LIBSPECTRUM_ID_SNAPSHOT_SNA, NULL, 0 ) != 
       LIBSPECTRUM_ERROR_NONE ) {
     fprintf( stderr, "%s: serialising to SNA failed\n", progname );
@@ -577,11 +595,8 @@ test_25( void )
     return TEST_INCOMPLETE;
   }
 
-  libspectrum_buffer_free( new_buffer );
   libspectrum_snap_free( snap );
   snap = libspectrum_snap_alloc();
-
-  libspectrum_buffer_append( &buffer, &length, &ptr, new_buffer );
 
   if( libspectrum_snap_read( snap, buffer, length, LIBSPECTRUM_ID_SNAPSHOT_SNA,
                              NULL ) != LIBSPECTRUM_ERROR_NONE ) {
@@ -616,24 +631,18 @@ test_26( void )
 {
   const char *filename = STATIC_TEST_PATH( "plus3.z80" );
   libspectrum_byte *buffer = NULL;
-  libspectrum_byte *ptr;
   size_t filesize = 0, length = 0;
   libspectrum_snap *snap;
   int flags;
   test_return_t r = TEST_INCOMPLETE;
-  libspectrum_buffer *new_buffer = libspectrum_buffer_alloc();
 
-  if( read_file( &buffer, &filesize, filename ) ) {
-    libspectrum_buffer_free( new_buffer );
-    return TEST_INCOMPLETE;
-  }
+  if( read_file( &buffer, &filesize, filename ) ) return TEST_INCOMPLETE;
 
   snap = libspectrum_snap_alloc();
 
   if( libspectrum_snap_read( snap, buffer, filesize, LIBSPECTRUM_ID_UNKNOWN,
 			     filename ) != LIBSPECTRUM_ERROR_NONE ) {
     fprintf( stderr, "%s: reading `%s' failed\n", progname, filename );
-    libspectrum_buffer_free( new_buffer );
     libspectrum_snap_free( snap );
     libspectrum_free( buffer );
     return TEST_INCOMPLETE;
@@ -642,19 +651,16 @@ test_26( void )
   libspectrum_free( buffer );
   buffer = NULL;
 
-  if( libspectrum_snap_write( new_buffer, &flags, snap,
+  if( libspectrum_snap_write( &buffer, &length, &flags, snap,
                               LIBSPECTRUM_ID_SNAPSHOT_Z80, NULL, 0 ) != 
       LIBSPECTRUM_ERROR_NONE ) {
     fprintf( stderr, "%s: serialising to Z80 failed\n", progname );
-    libspectrum_buffer_free( new_buffer );
     libspectrum_snap_free( snap );
     return TEST_INCOMPLETE;
   }
 
   libspectrum_snap_free( snap );
   snap = libspectrum_snap_alloc();
-
-  libspectrum_buffer_append( &buffer, &length, &ptr, new_buffer );
 
   if( libspectrum_snap_read( snap, buffer, length, LIBSPECTRUM_ID_SNAPSHOT_Z80,
                              NULL ) != LIBSPECTRUM_ERROR_NONE ) {
@@ -729,7 +735,8 @@ test_27( void )
 static test_return_t
 test_30( void )
 {
-  libspectrum_buffer *buffer = libspectrum_buffer_alloc();
+  libspectrum_byte *buffer = NULL;
+  size_t length = 0;
   libspectrum_tape *tape;
   const char *filename = DYNAMIC_TEST_PATH( "standard-tap.tap" );
   test_return_t r;
@@ -737,14 +744,15 @@ test_30( void )
   r = load_tape( &tape, filename, LIBSPECTRUM_ERROR_NONE );
   if( r ) return r;
 
-  if( libspectrum_tape_write( buffer, tape, LIBSPECTRUM_ID_TAPE_CSW ) ) {
+  if( libspectrum_tape_write( &buffer, &length, tape,
+                              LIBSPECTRUM_ID_TAPE_CSW ) ) {
     fprintf( stderr, "%s: writing `%s' to a .csw file was not successful\n",
              progname, filename );
     libspectrum_tape_free( tape );
     return TEST_INCOMPLETE;
   }
 
-  libspectrum_buffer_free( buffer );
+  libspectrum_free( buffer );
 
   if( libspectrum_tape_free( tape ) ) return TEST_INCOMPLETE;
 
@@ -762,6 +770,7 @@ struct test_description {
 static struct test_description tests[] = {
   { test_1, "Tape with unknown block", 0 },
   { test_2, "TZX turbo data with zero pilot pulses and zero data", 0 },
+  { test_3, "Writing empty .tap file", 0 },
   { test_4, "Invalid compressed file 1", 0 },
   { test_5, "Invalid compressed file 2", 0 },
   { test_6, "Pointer wraparound in SZX file", 0 },

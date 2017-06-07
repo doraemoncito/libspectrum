@@ -166,6 +166,11 @@ int libspectrum_split_to_48k_pages( libspectrum_snap *snap,
 
 libspectrum_snap* libspectrum_snap_alloc_internal( void );
 
+libspectrum_error
+libspectrum_snap_write_buffer( libspectrum_buffer *buffer, int *out_flags,
+                               libspectrum_snap *snap, libspectrum_id_t type,
+                               libspectrum_creator *creator, int in_flags );
+
 /* Format specific snapshot routines */
 
 libspectrum_error

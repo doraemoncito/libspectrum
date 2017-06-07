@@ -167,6 +167,7 @@ void
 libspectrum_buffer_append( libspectrum_byte **buffer, size_t *length,
                            libspectrum_byte **ptr, libspectrum_buffer *src )
 {
+  if( !src->bytes_used ) return;
   libspectrum_make_room( buffer, src->bytes_used, ptr, length );
   memcpy( *ptr, src->buffer, src->bytes_used );
   *ptr += src->bytes_used;

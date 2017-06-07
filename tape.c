@@ -261,9 +261,11 @@ libspectrum_tape_read( libspectrum_tape *tape, const libspectrum_byte *buffer,
 }
 
 libspectrum_error
-libspectrum_tape_write( libspectrum_buffer *buffer, libspectrum_tape *tape,
-                        libspectrum_id_t type )
+libspectrum_tape_write( libspectrum_byte **buffer, size_t *length,
+			libspectrum_tape *tape, libspectrum_id_t type )
 {
+  libspectrum_byte *ptr = *buffer;
+  libspectrum_buffer *new_buffer;
   libspectrum_class_t class;
   libspectrum_error error;
 
@@ -276,21 +278,26 @@ libspectrum_tape_write( libspectrum_buffer *buffer, libspectrum_tape *tape,
     return LIBSPECTRUM_ERROR_INVALID;
   }
 
+  /* Allow for uninitialised buffer on entry */
+  if( !*length ) *buffer = NULL;
+
+  new_buffer = libspectrum_buffer_alloc();
+
   switch( type ) {
 
   case LIBSPECTRUM_ID_TAPE_TAP:
   case LIBSPECTRUM_ID_TAPE_SPC:
   case LIBSPECTRUM_ID_TAPE_STA:
   case LIBSPECTRUM_ID_TAPE_LTP:
-    error = internal_tap_write( buffer, tape, type );
+    error = internal_tap_write( new_buffer, tape, type );
     break;
 
   case LIBSPECTRUM_ID_TAPE_TZX:
-    error = internal_tzx_write( buffer, tape );
+    error = internal_tzx_write( new_buffer, tape );
     break;
 
   case LIBSPECTRUM_ID_TAPE_CSW:
-    error = libspectrum_csw_write( buffer, tape );
+    error = libspectrum_csw_write( new_buffer, tape );
     break;
 
   default:
@@ -300,6 +307,9 @@ libspectrum_tape_write( libspectrum_buffer *buffer, libspectrum_tape *tape,
     break;
 
   }
+
+  libspectrum_buffer_append( buffer, length, &ptr, new_buffer );
+  libspectrum_buffer_free( new_buffer );
 
   return error;
 }

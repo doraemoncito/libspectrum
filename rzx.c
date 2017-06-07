@@ -288,7 +288,7 @@ libspectrum_rzx_stop_input( libspectrum_rzx *rzx )
   rzx->current_input = NULL;
 }
 
-void
+libspectrum_error
 libspectrum_rzx_add_snap( libspectrum_rzx *rzx, libspectrum_snap *snap, int automatic )
 {
   rzx_block_t *block;
@@ -301,6 +301,8 @@ libspectrum_rzx_add_snap( libspectrum_rzx *rzx, libspectrum_snap *snap, int auto
   block->types.snap.automatic = automatic;
 
   rzx->blocks = g_slist_append( rzx->blocks, block );
+
+  return LIBSPECTRUM_ERROR_NONE;
 }
 
 libspectrum_error
@@ -603,12 +605,13 @@ libspectrum_rzx_playback( libspectrum_rzx *rzx, libspectrum_byte *byte )
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-void
+libspectrum_error
 libspectrum_rzx_free( libspectrum_rzx *rzx )
 {
   g_slist_foreach( rzx->blocks, block_free_wrapper, NULL );
   g_slist_free( rzx->blocks );
   libspectrum_free( rzx );
+  return LIBSPECTRUM_ERROR_NONE;
 }
 
 size_t
@@ -1238,13 +1241,14 @@ rzx_read_sign_end( libspectrum_rzx *rzx, const libspectrum_byte **ptr,
   
 
 libspectrum_error
-libspectrum_rzx_write( libspectrum_buffer *buffer, libspectrum_rzx *rzx,
-                       libspectrum_id_t snap_format,
+libspectrum_rzx_write( libspectrum_byte **buffer, size_t *length,
+		       libspectrum_rzx *rzx, libspectrum_id_t snap_format,
 		       libspectrum_creator *creator, int compress,
 		       libspectrum_rzx_dsa_key *key )
 {
   libspectrum_error error;
   GSList *list;
+  libspectrum_byte *ptr = *buffer;
   libspectrum_buffer *new_buffer = libspectrum_buffer_alloc();
   libspectrum_buffer *block_data = libspectrum_buffer_alloc();
 
@@ -1302,10 +1306,10 @@ libspectrum_rzx_write( libspectrum_buffer *buffer, libspectrum_rzx *rzx,
   }
   
   rzx_write_header( block_data, key ? 1 : 0 );
-  libspectrum_buffer_write_buffer( buffer, block_data );
+  libspectrum_buffer_append( buffer, length, &ptr, block_data );
   libspectrum_buffer_free( block_data );
 
-  libspectrum_buffer_write_buffer( buffer, new_buffer );
+  libspectrum_buffer_append( buffer, length, &ptr, new_buffer );
   libspectrum_buffer_free( new_buffer );
 
   return LIBSPECTRUM_ERROR_NONE;
@@ -1416,20 +1420,20 @@ rzx_write_snapshot( libspectrum_buffer *buffer, libspectrum_buffer *block_data,
     /* If not given a snap format, try using .z80. If that would result
        in major information loss, use .szx instead */
     snap_format = LIBSPECTRUM_ID_SNAPSHOT_Z80;
-    error = libspectrum_snap_write( block_data, &flags, snap, snap_format,
-                                    creator, 0 );
+    error = libspectrum_snap_write_buffer( block_data, &flags, snap,
+                                           snap_format, creator, 0 );
     if( error ) { goto cleanup; }
 
     if( flags & LIBSPECTRUM_FLAG_SNAPSHOT_MAJOR_INFO_LOSS ) {
       libspectrum_buffer_clear( block_data );
       snap_format = LIBSPECTRUM_ID_SNAPSHOT_SZX;
-      error = libspectrum_snap_write( block_data, &flags, snap, snap_format,
-                                      creator, 0 );
+      error = libspectrum_snap_write_buffer( block_data, &flags, snap,
+                                             snap_format, creator, 0 );
       if( error ) { goto cleanup; }
     }
   } else {
-    error = libspectrum_snap_write( block_data, &flags, snap, snap_format,
-                                    creator, 0 );
+    error = libspectrum_snap_write_buffer( block_data, &flags, snap,
+                                           snap_format, creator, 0 );
     if( error ) { goto cleanup; }
   }
 

@@ -263,7 +263,7 @@ libspectrum_snap_alloc( void )
 }
 
 /* Free all memory used by a libspectrum_snap structure (destructor...) */
-void
+libspectrum_error
 libspectrum_snap_free( libspectrum_snap *snap )
 {
   size_t i;
@@ -321,6 +321,8 @@ libspectrum_snap_free( libspectrum_snap *snap )
     libspectrum_free( libspectrum_snap_didaktik80_ram( snap, 0 ) );
 
   libspectrum_free( snap );
+
+  return LIBSPECTRUM_ERROR_NONE;
 }
 
 /* Read in a snapshot, optionally guessing what type it is */
@@ -413,9 +415,25 @@ libspectrum_snap_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
 }
 
 libspectrum_error
-libspectrum_snap_write( libspectrum_buffer *buffer, int *out_flags,
-                        libspectrum_snap *snap, libspectrum_id_t type,
-                        libspectrum_creator *creator, int in_flags )
+libspectrum_snap_write( libspectrum_byte **buffer, size_t *length,
+			int *out_flags, libspectrum_snap *snap,
+			libspectrum_id_t type, libspectrum_creator *creator,
+			int in_flags )
+{
+  libspectrum_byte *ptr = *buffer;
+  libspectrum_buffer *new_buffer = libspectrum_buffer_alloc();
+  libspectrum_error error =
+    libspectrum_snap_write_buffer( new_buffer, out_flags, snap, type, creator,
+                                   in_flags );
+  libspectrum_buffer_append( buffer, length, &ptr, new_buffer );
+  libspectrum_buffer_free( new_buffer );
+  return error;
+}
+
+libspectrum_error
+libspectrum_snap_write_buffer( libspectrum_buffer *buffer, int *out_flags,
+                               libspectrum_snap *snap, libspectrum_id_t type,
+                               libspectrum_creator *creator, int in_flags )
 {
   libspectrum_class_t class;
   libspectrum_error error;
