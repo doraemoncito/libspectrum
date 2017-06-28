@@ -2228,7 +2228,7 @@ read_pltt_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   memcpy( palette, *buffer, 64 );
   (*buffer) += 64;
 
-  /* Specifications previous to v1.1a didn't have this register */
+  /* Specification v1.1 doesn't store video mode */
   if( data_length > 66 ) {
     libspectrum_snap_set_ulaplus_ff_register( snap, **buffer );
     (*buffer)++;
@@ -3969,8 +3969,10 @@ write_pltt_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
   libspectrum_buffer_write( data,
       libspectrum_snap_ulaplus_palette( snap, 0 ), 64 );
 
-  libspectrum_buffer_write_byte( data,
-      libspectrum_snap_ulaplus_ff_register( snap ) );
+  /* Extend the block iif a special video mode is active */
+  if( libspectrum_snap_ulaplus_ff_register( snap ) )
+    libspectrum_buffer_write_byte( data,
+        libspectrum_snap_ulaplus_ff_register( snap ) );
 
   write_chunk( buffer, ZXSTBID_PALETTE, data );
 
