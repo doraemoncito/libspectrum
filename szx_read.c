@@ -2117,6 +2117,36 @@ read_chunk( libspectrum_snap *snap, libspectrum_word version,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
+/* A mapping from an SZX machine IDs to a libspectrum machine IDs */
+struct machine_mapping_t {
+  /* The constant used in the SZX format to identify this machine */
+  szx_machine_type szx;
+
+  /* The constant used in libspectrum to identify this machine */
+  libspectrum_machine libspectrum;
+};
+
+/* The mappings from SZX to libspectrum machine IDs */
+static struct machine_mapping_t machine_mappings[] = {
+  { SZX_MACHINE_16, LIBSPECTRUM_MACHINE_16 },
+  { SZX_MACHINE_48, LIBSPECTRUM_MACHINE_48 },
+  { SZX_MACHINE_48_NTSC, LIBSPECTRUM_MACHINE_48_NTSC },
+  { SZX_MACHINE_128, LIBSPECTRUM_MACHINE_128 },
+  { SZX_MACHINE_PLUS2, LIBSPECTRUM_MACHINE_PLUS2 },
+  { SZX_MACHINE_PLUS2A, LIBSPECTRUM_MACHINE_PLUS2A },
+  { SZX_MACHINE_PLUS3, LIBSPECTRUM_MACHINE_PLUS3 },
+  { SZX_MACHINE_PLUS3E, LIBSPECTRUM_MACHINE_PLUS3E },
+  { SZX_MACHINE_PENTAGON, LIBSPECTRUM_MACHINE_PENT },
+  { SZX_MACHINE_TC2048, LIBSPECTRUM_MACHINE_TC2048 },
+  { SZX_MACHINE_TC2068, LIBSPECTRUM_MACHINE_TC2068 },
+  { SZX_MACHINE_TS2068, LIBSPECTRUM_MACHINE_TS2068 },
+  { SZX_MACHINE_SCORPION, LIBSPECTRUM_MACHINE_SCORP },
+  { SZX_MACHINE_SE, LIBSPECTRUM_MACHINE_SE },
+  { SZX_MACHINE_PENTAGON512, LIBSPECTRUM_MACHINE_PENT512 },
+  { SZX_MACHINE_PENTAGON1024, LIBSPECTRUM_MACHINE_PENT1024 },
+  { SZX_MACHINE_128KE, LIBSPECTRUM_MACHINE_128E },
+};
+
 libspectrum_error
 libspectrum_szx_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
 		      size_t length )
@@ -2128,6 +2158,8 @@ libspectrum_szx_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
   libspectrum_error error;
   const libspectrum_byte *end = buffer + length;
   szx_context *ctx;
+  size_t i;
+  int done = 0;
 
   if( end - buffer < 8 ) {
     libspectrum_print_error(
@@ -2150,77 +2182,14 @@ libspectrum_szx_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
 
   machine = *buffer++;
 
-  switch( machine ) {
+  for( i = 0; !done && i < ARRAY_SIZE( machine_mappings ); i++ ) {
+    if( machine == machine_mappings[i].szx ) {
+      libspectrum_snap_set_machine( snap, machine_mappings[i].libspectrum );
+      done = 1;
+    }
+  }
 
-  case SZX_MACHINE_16:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_16 );
-    break;
-
-  case SZX_MACHINE_48:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_48 );
-    break;
-
-  case SZX_MACHINE_48_NTSC:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_48_NTSC );
-    break;
-
-  case SZX_MACHINE_128:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_128 );
-    break;
-
-  case SZX_MACHINE_PLUS2:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PLUS2 );
-    break;
-
-  case SZX_MACHINE_PLUS2A:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PLUS2A );
-    break;
-
-  case SZX_MACHINE_PLUS3:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PLUS3 );
-    break;
-
-  case SZX_MACHINE_PLUS3E:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PLUS3E );
-    break;
-
-  case SZX_MACHINE_PENTAGON:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PENT );
-    break;
-
-  case SZX_MACHINE_TC2048:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_TC2048 );
-    break;
-
-  case SZX_MACHINE_TC2068:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_TC2068 );
-    break;
-
-  case SZX_MACHINE_TS2068:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_TS2068 );
-    break;
-
-  case SZX_MACHINE_SCORPION:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_SCORP );
-    break;
-
-  case SZX_MACHINE_SE:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_SE );
-    break;
-
-  case SZX_MACHINE_PENTAGON512:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PENT512 );
-    break;
-
-  case SZX_MACHINE_PENTAGON1024:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_PENT1024 );
-    break;
-
-  case SZX_MACHINE_128KE:
-    libspectrum_snap_set_machine( snap, LIBSPECTRUM_MACHINE_128E );
-    break;
-
-  default:
+  if( !done ) {
     libspectrum_print_error(
       LIBSPECTRUM_ERROR_UNKNOWN,
       "libspectrum_szx_read: unknown machine type %d", (int)*buffer
