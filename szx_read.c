@@ -2117,36 +2117,6 @@ read_chunk( libspectrum_snap *snap, libspectrum_word version,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* A mapping from an SZX machine IDs to a libspectrum machine IDs */
-struct machine_mapping_t {
-  /* The constant used in the SZX format to identify this machine */
-  szx_machine_type szx;
-
-  /* The constant used in libspectrum to identify this machine */
-  libspectrum_machine libspectrum;
-};
-
-/* The mappings from SZX to libspectrum machine IDs */
-static struct machine_mapping_t machine_mappings[] = {
-  { SZX_MACHINE_16, LIBSPECTRUM_MACHINE_16 },
-  { SZX_MACHINE_48, LIBSPECTRUM_MACHINE_48 },
-  { SZX_MACHINE_48_NTSC, LIBSPECTRUM_MACHINE_48_NTSC },
-  { SZX_MACHINE_128, LIBSPECTRUM_MACHINE_128 },
-  { SZX_MACHINE_PLUS2, LIBSPECTRUM_MACHINE_PLUS2 },
-  { SZX_MACHINE_PLUS2A, LIBSPECTRUM_MACHINE_PLUS2A },
-  { SZX_MACHINE_PLUS3, LIBSPECTRUM_MACHINE_PLUS3 },
-  { SZX_MACHINE_PLUS3E, LIBSPECTRUM_MACHINE_PLUS3E },
-  { SZX_MACHINE_PENTAGON, LIBSPECTRUM_MACHINE_PENT },
-  { SZX_MACHINE_TC2048, LIBSPECTRUM_MACHINE_TC2048 },
-  { SZX_MACHINE_TC2068, LIBSPECTRUM_MACHINE_TC2068 },
-  { SZX_MACHINE_TS2068, LIBSPECTRUM_MACHINE_TS2068 },
-  { SZX_MACHINE_SCORPION, LIBSPECTRUM_MACHINE_SCORP },
-  { SZX_MACHINE_SE, LIBSPECTRUM_MACHINE_SE },
-  { SZX_MACHINE_PENTAGON512, LIBSPECTRUM_MACHINE_PENT512 },
-  { SZX_MACHINE_PENTAGON1024, LIBSPECTRUM_MACHINE_PENT1024 },
-  { SZX_MACHINE_128KE, LIBSPECTRUM_MACHINE_128E },
-};
-
 libspectrum_error
 libspectrum_szx_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
 		      size_t length )
@@ -2182,9 +2152,9 @@ libspectrum_szx_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
 
   machine = *buffer++;
 
-  for( i = 0; !done && i < ARRAY_SIZE( machine_mappings ); i++ ) {
-    if( machine == machine_mappings[i].szx ) {
-      libspectrum_snap_set_machine( snap, machine_mappings[i].libspectrum );
+  for( i = 0; !done && i < ARRAY_SIZE( szx_machine_mappings ); i++ ) {
+    if( machine == szx_machine_mappings[i].szx ) {
+      libspectrum_snap_set_machine( snap, szx_machine_mappings[i].libspectrum );
       done = 1;
     }
   }

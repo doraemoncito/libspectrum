@@ -335,37 +335,29 @@ write_file_header( libspectrum_buffer *buffer, int *out_flags,
                    libspectrum_snap *snap )
 {
   libspectrum_byte flags;
+  size_t i;
+  int done = 0;
+  libspectrum_machine machine;
 
   libspectrum_buffer_write( buffer, signature, 4 );
   
   libspectrum_buffer_write_byte( buffer, SZX_VERSION_MAJOR );
   libspectrum_buffer_write_byte( buffer, SZX_VERSION_MINOR );
 
-  switch( libspectrum_snap_machine( snap ) ) {
+  machine = libspectrum_snap_machine( snap );
+  for( i = 0; !done && i < ARRAY_SIZE( szx_machine_mappings ); i++ ) {
+    if( machine == szx_machine_mappings[i].libspectrum ) {
+      flags = szx_machine_mappings[i].szx;
+      done = 1;
+    }
+  }
 
-  case LIBSPECTRUM_MACHINE_16:     flags = SZX_MACHINE_16; break;
-  case LIBSPECTRUM_MACHINE_48:     flags = SZX_MACHINE_48; break;
-  case LIBSPECTRUM_MACHINE_48_NTSC: flags = SZX_MACHINE_48_NTSC; break;
-  case LIBSPECTRUM_MACHINE_128:    flags = SZX_MACHINE_128; break;
-  case LIBSPECTRUM_MACHINE_128E:    flags = SZX_MACHINE_128KE; break;
-  case LIBSPECTRUM_MACHINE_PLUS2:  flags = SZX_MACHINE_PLUS2; break;
-  case LIBSPECTRUM_MACHINE_PLUS2A: flags = SZX_MACHINE_PLUS2A; break;
-  case LIBSPECTRUM_MACHINE_PLUS3:  flags = SZX_MACHINE_PLUS3; break;
-  case LIBSPECTRUM_MACHINE_PLUS3E: flags = SZX_MACHINE_PLUS3E; break;
-  case LIBSPECTRUM_MACHINE_PENT:   flags = SZX_MACHINE_PENTAGON; break;
-  case LIBSPECTRUM_MACHINE_TC2048: flags = SZX_MACHINE_TC2048; break;
-  case LIBSPECTRUM_MACHINE_TC2068: flags = SZX_MACHINE_TC2068; break;
-  case LIBSPECTRUM_MACHINE_TS2068: flags = SZX_MACHINE_TS2068; break;
-  case LIBSPECTRUM_MACHINE_SCORP:  flags = SZX_MACHINE_SCORPION; break;
-  case LIBSPECTRUM_MACHINE_SE:     flags = SZX_MACHINE_SE; break;
-  case LIBSPECTRUM_MACHINE_PENT512: flags = SZX_MACHINE_PENTAGON512; break;
-  case LIBSPECTRUM_MACHINE_PENT1024: flags = SZX_MACHINE_PENTAGON1024; break;
-
-  default:
+  if( !done ) {
     libspectrum_print_error( LIBSPECTRUM_ERROR_LOGIC,
 			     "Emulated machine type is set to 'unknown'!" );
     return LIBSPECTRUM_ERROR_LOGIC;
   }
+
   libspectrum_buffer_write_byte( buffer, flags );
 
   /* Flags byte */
