@@ -44,7 +44,8 @@ libspectrum_la_SOURCES = bzip2.c \
 			 snap_accessors.c \
 			 sp.c \
 			 symbol_table.c \
-			 szx.c \
+			 szx_read.c \
+			 szx_write.c \
 			 tap.c \
 			 tape.c \
 			 tape_accessors.c \
@@ -85,6 +86,7 @@ BUILT_SOURCES = libspectrum.h snap_accessors.c tape_accessors.c tape_set.c
 
 nodist_include_HEADERS = libspectrum.h
 noinst_HEADERS = internals.h \
+		 szx_internals.h \
 			 zip.h
 
 noinst_PROGRAMS =
