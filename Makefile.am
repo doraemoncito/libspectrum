@@ -44,6 +44,7 @@ libspectrum_la_SOURCES = bzip2.c \
 			 snap_accessors.c \
 			 sp.c \
 			 symbol_table.c \
+			 szx.c \
 			 szx_read.c \
 			 szx_write.c \
 			 tap.c \
