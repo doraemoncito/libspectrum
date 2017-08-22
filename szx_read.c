@@ -52,16 +52,69 @@ typedef libspectrum_error (*read_chunk_fn)( libspectrum_snap *snap,
                                             szx_context *ctx );
 
 static libspectrum_error
+read_memory( const libspectrum_byte **buffer, libspectrum_byte **data,
+    int compressed, size_t length_in_file, size_t expected_length )
+{
+  if( compressed ) {
+
+#ifdef HAVE_ZLIB_H
+
+    size_t uncompressed_length = 0;
+    libspectrum_error error;
+
+    error = libspectrum_zlib_inflate( *buffer, length_in_file, data,
+                                      &uncompressed_length );
+    if( error ) return error;
+
+    if( uncompressed_length != expected_length ) {
+      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+                               "%s:read_memory: invalid length "
+                               "in compressed file, should be %lu, file "
+                               "has %lu",
+                               __FILE__,
+                               (unsigned long)expected_length,
+                               (unsigned long)uncompressed_length );
+      return LIBSPECTRUM_ERROR_UNKNOWN;
+    }
+
+    *buffer += length_in_file;
+
+#else
+
+    libspectrum_print_error(
+      LIBSPECTRUM_ERROR_UNKNOWN,
+      "%s:read_memory: zlib needed for decompression\n",
+      __FILE__
+    );
+    return LIBSPECTRUM_ERROR_UNKNOWN;
+
+#endif
+
+  } else {
+
+    if( length_in_file < expected_length ) {
+      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+                               "%s:read_memory: length %lu too short, "
+                               "expected %lu",
+                               __FILE__, (unsigned long)length_in_file,
+                               (unsigned long)expected_length );
+      return LIBSPECTRUM_ERROR_UNKNOWN;
+    }
+
+    *data = libspectrum_new( libspectrum_byte, expected_length );
+    memcpy( *data, *buffer, expected_length );
+
+    *buffer += expected_length;
+  }
+
+  return LIBSPECTRUM_ERROR_NONE;
+}
+
+static libspectrum_error
 read_ram_page( libspectrum_byte **data, size_t *page,
 	       const libspectrum_byte **buffer, size_t data_length,
 	       size_t uncompressed_length, libspectrum_word *flags )
 {
-#ifdef HAVE_ZLIB_H
-
-  libspectrum_error error;
-
-#endif			/* #ifdef HAVE_ZLIB_H */
-
   if( data_length < 3 ) {
     libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
 			     "%s:read_ram_page: length %lu too short",
@@ -70,46 +123,10 @@ read_ram_page( libspectrum_byte **data, size_t *page,
   }
 
   *flags = libspectrum_read_word( buffer );
-
   *page = **buffer; (*buffer)++;
 
-  if( *flags & LIBSPECTRUM_ZXSTRF_COMPRESSED ) {
-
-#ifdef HAVE_ZLIB_H
-
-    error = libspectrum_zlib_inflate( *buffer, data_length - 3, data,
-				      &uncompressed_length );
-    if( error ) return error;
-
-    *buffer += data_length - 3;
-
-#else			/* #ifdef HAVE_ZLIB_H */
-
-    libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
-      "%s:read_ram_page: zlib needed for decompression\n",
-      __FILE__
-    );
-    return LIBSPECTRUM_ERROR_UNKNOWN;
-
-#endif			/* #ifdef HAVE_ZLIB_H */
-
-  } else {
-
-    if( data_length < 3 + uncompressed_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-			       "%s:read_ram_page: length %lu too short",
-			       __FILE__, (unsigned long)data_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    *data = libspectrum_new( libspectrum_byte, uncompressed_length );
-    memcpy( *data, *buffer, uncompressed_length );
-    *buffer += uncompressed_length;
-
-  }
-
-  return LIBSPECTRUM_ERROR_NONE;
+  return read_memory( buffer, data, *flags & LIBSPECTRUM_ZXSTRF_COMPRESSED,
+      data_length - 3, uncompressed_length );
 }
 
 static libspectrum_error
@@ -174,9 +191,7 @@ read_b128_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte *end GCC_UNUSED, size_t data_length,
                  szx_context *ctx GCC_UNUSED )
 {
-#ifdef HAVE_ZLIB_H
   libspectrum_error error;
-#endif
   libspectrum_byte *rom_data = NULL;
   libspectrum_dword flags;
   const size_t expected_length = 0x4000;
@@ -339,9 +354,7 @@ read_opus_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte *end GCC_UNUSED, size_t data_length,
                  szx_context *ctx GCC_UNUSED )
 {
-#ifdef HAVE_ZLIB_H
   libspectrum_error error;
-#endif
   libspectrum_byte *ram_data = NULL, *rom_data = NULL;
   libspectrum_dword flags;
   size_t disc_ram_length;
@@ -1213,7 +1226,8 @@ read_if1_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 {
   libspectrum_word flags;
   libspectrum_word expected_length;
-  libspectrum_byte *rom_data = NULL; 
+  libspectrum_byte *rom_data = NULL;
+  libspectrum_error error;
 
   if( data_length < 40 ) {
     libspectrum_print_error(
@@ -1246,64 +1260,13 @@ read_if1_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 
     libspectrum_snap_set_interface1_custom_rom( snap, 1 );
 
-    if( flags & LIBSPECTRUM_ZXSTIF1F_COMPRESSED ) {
+    error = read_memory( buffer, &rom_data,
+        flags & LIBSPECTRUM_ZXSTIF1F_COMPRESSED, data_length - 40,
+        expected_length );
+    if( error ) return error;
 
-#ifdef HAVE_ZLIB_H
-
-      size_t uncompressed_length = 0;
-
-      libspectrum_error error =
-              libspectrum_zlib_inflate( *buffer, data_length - 40, &rom_data,
-                                        &uncompressed_length );
-      if( error ) return error;
-
-      if( uncompressed_length != expected_length ) {
-        libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                                 "%s:read_if1_chunk: invalid ROM length "
-                                 "in compressed file, should be %lu, file "
-                                 "has %lu",
-                                 __FILE__, 
-                                 (unsigned long)expected_length,
-                                 (unsigned long)uncompressed_length );
-        return LIBSPECTRUM_ERROR_UNKNOWN;
-      }
-
-      libspectrum_snap_set_interface1_rom( snap, 0, rom_data );
-      libspectrum_snap_set_interface1_rom_length( snap, 0,
-                                                  uncompressed_length );
-
-      *buffer += data_length - 40;
-
-#else			/* #ifdef HAVE_ZLIB_H */
-
-      libspectrum_print_error(
-        LIBSPECTRUM_ERROR_UNKNOWN,
-        "%s:read_if1_chunk: zlib needed for decompression\n",
-        __FILE__
-      );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-
-#endif			/* #ifdef HAVE_ZLIB_H */
-
-    } else {
-
-      if( data_length < 40 + expected_length ) {
-        libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                                 "%s:read_if1_chunk: length %lu too short, "
-                                 "expected %lu" ,
-                                 __FILE__, (unsigned long)data_length,
-                                 (unsigned long)40 + expected_length );
-        return LIBSPECTRUM_ERROR_UNKNOWN;
-      }
-
-      rom_data = libspectrum_new( libspectrum_byte, expected_length );
-      memcpy( rom_data, *buffer, expected_length );
-
-      libspectrum_snap_set_interface1_rom_length( snap, 0, expected_length );
-
-      *buffer += expected_length;
-
-    }
+    libspectrum_snap_set_interface1_rom( snap, 0, rom_data );
+    libspectrum_snap_set_interface1_rom_length( snap, 0, expected_length );
   }
 
   return LIBSPECTRUM_ERROR_NONE;
@@ -1377,56 +1340,9 @@ read_rom_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   flags = libspectrum_read_word( buffer );
   expected_length = libspectrum_read_dword( buffer );
 
-  if( flags & LIBSPECTRUM_ZXSTRF_COMPRESSED ) {
-
-#ifdef HAVE_ZLIB_H
-
-    size_t uncompressed_length = 0;
-
-    libspectrum_error error =
-            libspectrum_zlib_inflate( *buffer, data_length - 6, &rom_data,
-                                      &uncompressed_length );
-    if( error ) return error;
-
-    if( uncompressed_length != expected_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                               "%s:read_rom_chunk: invalid ROM length "
-                               "in compressed file, should be %lu, file "
-                               "has %lu",
-                               __FILE__, 
-                               (unsigned long)expected_length,
-                               (unsigned long)uncompressed_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    *buffer += data_length - 6;
-
-#else			/* #ifdef HAVE_ZLIB_H */
-
-    libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
-      "%s:read_rom_chunk: zlib needed for decompression\n",
-      __FILE__
-    );
-    return LIBSPECTRUM_ERROR_UNKNOWN;
-
-#endif			/* #ifdef HAVE_ZLIB_H */
-
-  } else {
-
-    if( data_length < 6 + expected_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                               "%s:read_rom_chunk: length %lu too short, "
-                               "expected %lu" ,
-                               __FILE__, (unsigned long)data_length,
-                               (unsigned long)6 + expected_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    rom_data = libspectrum_new( libspectrum_byte, expected_length );
-    memcpy( rom_data, *buffer, expected_length );
-    *buffer += expected_length;
-  }
+  retval = read_memory( buffer, &rom_data,
+      flags & LIBSPECTRUM_ZXSTRF_COMPRESSED, data_length - 6, expected_length );
+  if( retval ) return retval;
 
   libspectrum_snap_set_custom_rom( snap, 1 );
 
@@ -1592,9 +1508,7 @@ read_dide_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte *end GCC_UNUSED, size_t data_length,
                  szx_context *ctx GCC_UNUSED )
 {
-#ifdef HAVE_ZLIB_H
   libspectrum_error error;
-#endif
   libspectrum_word flags;
   libspectrum_byte *eprom_data = NULL;
   const size_t expected_length = 0x2000;
@@ -1617,57 +1531,9 @@ read_dide_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_divide_control( snap, **buffer ); (*buffer)++;
   libspectrum_snap_set_divide_pages( snap, **buffer ); (*buffer)++;
 
-  if( flags & LIBSPECTRUM_ZXSTDIVIDE_COMPRESSED ) {
-
-#ifdef HAVE_ZLIB_H
-
-    size_t uncompressed_length = 0;
-
-    error = libspectrum_zlib_inflate( *buffer, data_length - 4, &eprom_data,
-                                      &uncompressed_length );
-    if( error ) return error;
-
-    if( uncompressed_length != expected_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                               "%s:read_dide_chunk: invalid EPROM length "
-                               "in compressed file, should be %lu, file "
-                               "has %lu",
-                               __FILE__,
-                               (unsigned long)expected_length,
-                               (unsigned long)uncompressed_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    *buffer += data_length - 4;
-
-#else
-
-    libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
-      "%s:read_dide_chunk: zlib needed for decompression\n",
-      __FILE__
-    );
-    return LIBSPECTRUM_ERROR_UNKNOWN;
-
-#endif
-
-  } else {
-
-    if( data_length < 4 + expected_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                               "%s:read_dide_chunk: length %lu too short, "
-                               "expected %lu",
-                               __FILE__, (unsigned long)data_length,
-                               (unsigned long)4 + expected_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    eprom_data = libspectrum_new( libspectrum_byte, expected_length );
-    memcpy( eprom_data, *buffer, expected_length );
-
-    *buffer += expected_length;
-
-  }
+  error = read_memory( buffer, &eprom_data, flags & LIBSPECTRUM_ZXSTDIVIDE_COMPRESSED,
+      data_length - 4, expected_length );
+  if( error ) return error;
 
   libspectrum_snap_set_divide_eprom( snap, 0, eprom_data );
 
@@ -1707,8 +1573,8 @@ read_snet_memory( libspectrum_snap *snap, const libspectrum_byte **buffer,
   void (*setter)(libspectrum_snap*, int, libspectrum_byte*) )
 {
   size_t data_length;
-  libspectrum_byte *data_out;
-  const libspectrum_byte *data;
+  libspectrum_byte *uncompressed_data;
+  libspectrum_error error;
 
   if( *data_remaining < 4 ) {
     libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
@@ -1726,52 +1592,11 @@ read_snet_memory( libspectrum_snap *snap, const libspectrum_byte **buffer,
   }
   *data_remaining -= data_length;
 
-  if( compressed ) {
+  error = read_memory( buffer, &uncompressed_data, compressed, data_length,
+      0x20000 );
+  if( error ) return error;
 
-#ifdef HAVE_ZLIB_H
-    libspectrum_error error;
-    size_t uncompressed_length = 0;
-    libspectrum_byte *uncompressed_data;
-
-    error = libspectrum_zlib_inflate( *buffer, data_length, &uncompressed_data,
-        &uncompressed_length );
-    if( error ) return error;
-
-    *buffer += data_length;
-
-    if( uncompressed_length != 0x20000 ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-          "%s:read_snet_memory: data decompressed to %lu but should be 0x20000",
-          __FILE__, (unsigned long)uncompressed_length );
-      libspectrum_free( uncompressed_data );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    data = uncompressed_data;
-
-#else
-
-    libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-        "%s:read_snet_memory: zlib needed for decompression\n", __FILE__ );
-    return LIBSPECTRUM_ERROR_UNKNOWN;
-
-#endif
-
-  } else {
-    if( data_length != 0x20000 ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-          "%s:read_snet_memory: data has length %lu but should be 0x20000",
-          __FILE__, (unsigned long)data_length );
-      return LIBSPECTRUM_ERROR_NONE;
-    }
-
-    data = *buffer;
-    *buffer += data_length;
-  }
-
-  data_out = libspectrum_new( libspectrum_byte, 0x20000 );
-  memcpy( data_out, data, 0x20000 );
-  setter( snap, 0, data_out );
+  setter( snap, 0, uncompressed_data );
 
   return LIBSPECTRUM_ERROR_NONE;
 }
@@ -1941,57 +1766,9 @@ read_mfce_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   expected_ram_length = flags & LIBSPECTRUM_ZXSTMF_16KRAMMODE ? 0x4000 : 0x2000;
   disc_ram_length = data_length - 2;
 
-  if( flags & LIBSPECTRUM_ZXSTMF_COMPRESSED ) {
-
-#ifdef HAVE_ZLIB_H
-
-    size_t uncompressed_length = 0;
-
-    error = libspectrum_zlib_inflate( *buffer, disc_ram_length, &ram_data,
-                                      &uncompressed_length );
-    if( error ) return error;
-
-    if( uncompressed_length != expected_ram_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                               "%s:read_mfce_chunk: invalid RAM length "
-                               "in compressed file, should be %lu, file "
-                               "has %lu",
-                               __FILE__,
-                               (unsigned long)expected_ram_length,
-                               (unsigned long)uncompressed_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    *buffer += disc_ram_length;
-
-#else			/* #ifdef HAVE_ZLIB_H */
-
-    libspectrum_print_error(
-      LIBSPECTRUM_ERROR_UNKNOWN,
-      "%s:read_mfce_chunk: zlib needed for decompression\n",
-      __FILE__
-    );
-    return LIBSPECTRUM_ERROR_UNKNOWN;
-
-#endif			/* #ifdef HAVE_ZLIB_H */
-
-  } else {
-
-    if( disc_ram_length != expected_ram_length ) {
-      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
-                               "%s:read_mfce_chunk: invalid RAM length "
-                               "in uncompressed file, should be %lu, file "
-                               "has %lu",
-                               __FILE__,
-                               (unsigned long)expected_ram_length,
-                               (unsigned long)disc_ram_length );
-      return LIBSPECTRUM_ERROR_UNKNOWN;
-    }
-
-    ram_data = libspectrum_new( libspectrum_byte, expected_ram_length );
-    memcpy( ram_data, *buffer, expected_ram_length );
-    *buffer += expected_ram_length;
-  }
+  error = read_memory( buffer, &ram_data, flags & LIBSPECTRUM_ZXSTMF_COMPRESSED,
+      disc_ram_length, expected_ram_length );
+  if( error ) return error;
 
   libspectrum_snap_set_multiface_ram( snap, 0, ram_data );
   libspectrum_snap_set_multiface_ram_length( snap, 0, expected_ram_length );
