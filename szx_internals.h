@@ -180,7 +180,7 @@ extern struct libspectrum_szx_flag_composition libspectrum_szx_opus_flags[];
 #define LIBSPECTRUM_ZXSTPLUSDF_PAGED 1
 #define LIBSPECTRUM_ZXSTPLUSDF_COMPRESSED 2
 #define LIBSPECTRUM_ZXSTPLUSDF_SEEKLOWER 4
-extern struct libspectrum_szx_flag_composition libspectrum_szx_plusd_flags[];
+extern struct libspectrum_szx_flag_composition libspectrum_szx_plsd_flags[];
 
 extern const libspectrum_byte LIBSPECTRUM_ZXSTPDRT_GDOS;
 extern const libspectrum_byte LIBSPECTRUM_ZXSTPDRT_UNIDOS;

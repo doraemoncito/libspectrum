@@ -566,7 +566,7 @@ read_plsd_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_plusd_active( snap, 1 );
 
   flags = libspectrum_read_dword( buffer );
-  decompose_flags( snap, flags, libspectrum_szx_plusd_flags );
+  decompose_flags( snap, flags, libspectrum_szx_plsd_flags );
 
   disc_ram_length = libspectrum_read_dword( buffer );
   disc_rom_length = libspectrum_read_dword( buffer );

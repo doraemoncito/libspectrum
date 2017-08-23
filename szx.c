@@ -161,7 +161,7 @@ set_plusd_direction_inverted( libspectrum_snap *snap, int value )
   libspectrum_snap_set_plusd_direction( snap, !value );
 }
 
-struct libspectrum_szx_flag_composition libspectrum_szx_plusd_flags[] = {
+struct libspectrum_szx_flag_composition libspectrum_szx_plsd_flags[] = {
   { LIBSPECTRUM_ZXSTPLUSDF_PAGED, GET_SET(plusd_paged) },
   { LIBSPECTRUM_ZXSTPLUSDF_SEEKLOWER, get_plusd_direction_inverted, set_plusd_direction_inverted },
   { 0, 0 }

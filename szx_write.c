@@ -374,6 +374,20 @@ write_file_header( libspectrum_buffer *buffer, int *out_flags,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
+static libspectrum_dword
+compose_flags( libspectrum_snap *snap,
+    struct libspectrum_szx_flag_composition *decompositions )
+{
+  libspectrum_dword flags = 0;
+  for( ; decompositions->flag; decompositions++ ) {
+    if( decompositions->getter( snap ) ) {
+      flags |= decompositions->flag;
+    }
+  }
+
+  return flags;
+}
+
 static void
 write_crtr_chunk( libspectrum_buffer *buffer, libspectrum_buffer *crtr_data,
                   libspectrum_creator *creator )
@@ -583,11 +597,7 @@ static void
 write_keyb_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
 		  int *out_flags, libspectrum_snap *snap )
 {
-  libspectrum_dword flags;
-
-  flags = 0;
-  if( libspectrum_snap_issue2( snap ) ) flags |= LIBSPECTRUM_ZXSTKF_ISSUE2;
-
+  libspectrum_dword flags = compose_flags( snap, libspectrum_szx_keyb_flags );
   libspectrum_buffer_write_dword( data, flags );
 
   write_joystick( data, out_flags, snap, LIBSPECTRUM_JOYSTICK_INPUT_KEYBOARD );
@@ -601,9 +611,7 @@ write_zxpr_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
 {
   libspectrum_word flags;
 
-  flags = 0;
-  if( libspectrum_snap_zx_printer_active( snap ) ) flags |= LIBSPECTRUM_ZXSTPRF_ENABLED;
-
+  flags = compose_flags( snap, libspectrum_szx_zxpr_flags );
   libspectrum_buffer_write_word( data, flags );
 
   write_chunk( buffer, LIBSPECTRUM_ZXSTBID_ZXPRINTER, data );
@@ -810,9 +818,7 @@ write_ay_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
   size_t i;
   libspectrum_byte flags;
 
-  flags = 0;
-  if( libspectrum_snap_fuller_box_active( snap ) ) flags |= LIBSPECTRUM_ZXSTAYF_FULLERBOX;
-  if( libspectrum_snap_melodik_active( snap ) ) flags |= LIBSPECTRUM_ZXSTAYF_128AY;
+  flags = compose_flags( snap, libspectrum_szx_ay_flags );
   libspectrum_buffer_write_byte( data, flags );
 
   libspectrum_buffer_write_byte( data,
@@ -854,11 +860,8 @@ write_b128_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
                                      beta_rom_length, compress );
   }
 
-  flags = LIBSPECTRUM_ZXSTBETAF_CONNECTED;	/* Betadisk interface connected */
-  if( libspectrum_snap_beta_paged( snap ) ) flags |= LIBSPECTRUM_ZXSTBETAF_PAGED;
-  if( libspectrum_snap_beta_autoboot( snap ) ) flags |= LIBSPECTRUM_ZXSTBETAF_AUTOBOOT;
-  if( !libspectrum_snap_beta_direction( snap ) ) flags |= LIBSPECTRUM_ZXSTBETAF_SEEKLOWER;
-  if( libspectrum_snap_beta_custom_rom( snap ) ) flags |= LIBSPECTRUM_ZXSTBETAF_CUSTOMROM;
+  flags = LIBSPECTRUM_ZXSTBETAF_CONNECTED |
+    compose_flags( snap, libspectrum_szx_b128_flags );
   if( use_compression ) flags |= LIBSPECTRUM_ZXSTBETAF_COMPRESSED;
   libspectrum_buffer_write_dword( data, flags );
 
@@ -956,8 +959,7 @@ write_if1_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
   use_compression = compress_data( rom_buffer, rom_data,
                                    uncompressed_rom_length, compress );
 
-  flags |= LIBSPECTRUM_ZXSTIF1F_ENABLED;
-  if( libspectrum_snap_interface1_paged( snap ) ) flags |= LIBSPECTRUM_ZXSTIF1F_PAGED;
+  flags = compose_flags( snap, libspectrum_szx_if1_flags );
   if( use_compression ) flags |= LIBSPECTRUM_ZXSTIF1F_COMPRESSED;
   libspectrum_buffer_write_word( data, flags );
 
@@ -1024,10 +1026,8 @@ write_opus_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
     libspectrum_buffer_write( ram_buffer, ram_data, disk_ram_length );
   }
 
-  if( libspectrum_snap_opus_paged( snap ) ) flags |= LIBSPECTRUM_ZXSTOPUSF_PAGED;
+  flags = compose_flags( snap, libspectrum_szx_opus_flags );
   if( rom_compression && ram_compression ) flags |= LIBSPECTRUM_ZXSTOPUSF_COMPRESSED;
-  if( !libspectrum_snap_opus_direction( snap ) ) flags |= LIBSPECTRUM_ZXSTOPUSF_SEEKLOWER;
-  if( libspectrum_snap_opus_custom_rom( snap ) ) flags |= LIBSPECTRUM_ZXSTOPUSF_CUSTOMROM;
   libspectrum_buffer_write_dword( data, flags );
 
   libspectrum_buffer_write_dword( data,
@@ -1101,9 +1101,8 @@ write_plsd_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
     libspectrum_buffer_write( ram_buffer, ram_data, disk_ram_length );
   }
 
-  if( libspectrum_snap_plusd_paged( snap ) ) flags |= LIBSPECTRUM_ZXSTPLUSDF_PAGED;
+  flags = compose_flags( snap, libspectrum_szx_plsd_flags );
   if( rom_compression && ram_compression ) flags |= LIBSPECTRUM_ZXSTPLUSDF_COMPRESSED;
-  if( !libspectrum_snap_plusd_direction( snap ) ) flags |= LIBSPECTRUM_ZXSTPLUSDF_SEEKLOWER;
   libspectrum_buffer_write_dword( data, flags );
 
   libspectrum_buffer_write_dword( data,
@@ -1143,10 +1142,7 @@ write_zxat_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
 {
   libspectrum_word flags;
 
-  flags = 0;
-  if( libspectrum_snap_zxatasp_upload ( snap ) ) flags |= LIBSPECTRUM_ZXSTZXATF_UPLOAD;
-  if( libspectrum_snap_zxatasp_writeprotect( snap ) )
-    flags |= LIBSPECTRUM_ZXSTZXATF_WRITEPROTECT;
+  flags = compose_flags( snap, libspectrum_szx_zxat_flags );
   libspectrum_buffer_write_word( data, flags );
 
   libspectrum_buffer_write_byte( data, libspectrum_snap_zxatasp_port_a( snap ) );
@@ -1175,8 +1171,7 @@ write_zxcf_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
 {
   libspectrum_word flags;
 
-  flags = 0;
-  if( libspectrum_snap_zxcf_upload( snap ) ) flags |= LIBSPECTRUM_ZXSTZXCFF_UPLOAD;
+  flags = compose_flags( snap, libspectrum_szx_zxcf_flags );
   libspectrum_buffer_write_word( data, flags );
 
   libspectrum_buffer_write_byte( data, libspectrum_snap_zxcf_memctl( snap ) );
@@ -1292,9 +1287,7 @@ write_dide_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
   use_compression = compress_data( eprom_buffer, eprom_data,
                                    uncompressed_eprom_length, compress );
 
-  if( libspectrum_snap_divide_eprom_writeprotect( snap ) )
-    flags |= LIBSPECTRUM_ZXSTDIVIDE_EPROM_WRITEPROTECT;
-  if( libspectrum_snap_divide_paged( snap ) ) flags |= LIBSPECTRUM_ZXSTDIVIDE_PAGED;
+  flags = compose_flags( snap, libspectrum_szx_dide_flags );
   if( use_compression ) flags |= LIBSPECTRUM_ZXSTDIVIDE_COMPRESSED;
   libspectrum_buffer_write_word( data, flags );
 
@@ -1326,22 +1319,7 @@ write_snet_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
 {
   libspectrum_word flags = 0;
 
-  if( libspectrum_snap_spectranet_paged( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_PAGED;
-  if( libspectrum_snap_spectranet_paged_via_io( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_PAGED_VIA_IO;
-  if( libspectrum_snap_spectranet_programmable_trap_active( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_PROGRAMMABLE_TRAP_ACTIVE;
-  if( libspectrum_snap_spectranet_programmable_trap_msb( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_PROGRAMMABLE_TRAP_MSB;
-  if( libspectrum_snap_spectranet_all_traps_disabled( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_ALL_DISABLED;
-  if( libspectrum_snap_spectranet_rst8_trap_disabled( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_RST8_DISABLED;
-  if( libspectrum_snap_spectranet_deny_downstream_a15( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_DENY_DOWNSTREAM_A15;
-  if( libspectrum_snap_spectranet_nmi_flipflop( snap ) )
-    flags |= LIBSPECTRUM_ZXSTSNET_NMI_FLIPFLOP;
+  flags = compose_flags( snap, libspectrum_szx_snet_flags );
   libspectrum_buffer_write_word( data, flags );
 
   libspectrum_buffer_write_byte( data,
@@ -1457,13 +1435,8 @@ write_mfce_chunk( libspectrum_buffer *buffer, libspectrum_buffer *data,
     model = LIBSPECTRUM_ZXSTMFM_128;
   libspectrum_buffer_write_byte( data, model );
 
-  if( libspectrum_snap_multiface_paged( snap ) ) flags |= LIBSPECTRUM_ZXSTMF_PAGEDIN;
+  flags = compose_flags( snap, libspectrum_szx_mfce_flags );
   if( use_compression ) flags |= LIBSPECTRUM_ZXSTMF_COMPRESSED;
-  if( libspectrum_snap_multiface_software_lockout( snap ) )
-    flags |= LIBSPECTRUM_ZXSTMF_SOFTWARELOCKOUT;
-  if( libspectrum_snap_multiface_red_button_disabled( snap ) )
-    flags |= LIBSPECTRUM_ZXSTMF_REDBUTTONDISABLED;
-  if( libspectrum_snap_multiface_disabled( snap ) ) flags |= LIBSPECTRUM_ZXSTMF_DISABLED;
   if( ram_length == 0x4000 ) flags |= LIBSPECTRUM_ZXSTMF_16KRAMMODE;
   libspectrum_buffer_write_byte( data, flags );
 
