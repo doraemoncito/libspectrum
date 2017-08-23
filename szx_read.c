@@ -129,19 +129,9 @@ read_ram_page( libspectrum_byte **data, size_t *page,
       data_length - 3, uncompressed_length );
 }
 
-/* How to decompose one bit of a flags field */
-struct flag_decomposition {
-  /* The single bit */
-  libspectrum_dword flag;
-
-  /* The setter to be called for this bit */
-  void (*setter)( libspectrum_snap *snap, int value );
-};
-
-/* Decompose a flags field, calling the appropriate setters */
 static void
 decompose_flags( libspectrum_snap *snap, libspectrum_dword flags,
-    struct flag_decomposition *decompositions )
+    struct libspectrum_szx_flag_composition *decompositions )
 {
   for( ; decompositions->flag; decompositions++ ) {
     decompositions->setter( snap, !!( flags & decompositions->flag ) );
@@ -175,13 +165,6 @@ read_atrp_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* The flag decompositions for the AY chunk */
-static struct flag_decomposition ay_flags_decompositions[] = {
-  { LIBSPECTRUM_ZXSTAYF_FULLERBOX, libspectrum_snap_set_fuller_box_active },
-  { LIBSPECTRUM_ZXSTAYF_128AY, libspectrum_snap_set_melodik_active },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_ay_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 	       const libspectrum_byte **buffer,
@@ -199,7 +182,7 @@ read_ay_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   }
 
   flags = **buffer; (*buffer)++;
-  decompose_flags( snap, flags, ay_flags_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_ay_flags );
 
   libspectrum_snap_set_out_ay_registerport( snap, **buffer ); (*buffer)++;
 
@@ -209,21 +192,6 @@ read_ay_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 
   return LIBSPECTRUM_ERROR_NONE;
 }
-
-static void
-set_beta_direction_inverted( libspectrum_snap *snap, int value )
-{
-  libspectrum_snap_set_beta_direction( snap, !value );
-}
-
-/* The flag decompositions for the B128 chunk */
-static struct flag_decomposition b128_flags_decompositions[] = {
-  { LIBSPECTRUM_ZXSTBETAF_PAGED, libspectrum_snap_set_beta_paged },
-  { LIBSPECTRUM_ZXSTBETAF_AUTOBOOT, libspectrum_snap_set_beta_autoboot },
-  { LIBSPECTRUM_ZXSTBETAF_SEEKLOWER, set_beta_direction_inverted },
-  { LIBSPECTRUM_ZXSTBETAF_CUSTOMROM, libspectrum_snap_set_beta_custom_rom },
-  { 0, 0 }
-};
 
 static libspectrum_error
 read_b128_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
@@ -246,7 +214,7 @@ read_b128_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_beta_active( snap, 1 );
 
   flags = libspectrum_read_dword( buffer );
-  decompose_flags( snap, flags, b128_flags_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_b128_flags );
 
   libspectrum_snap_set_beta_drive_count( snap, **buffer ); (*buffer)++;
   libspectrum_snap_set_beta_system( snap, **buffer ); (*buffer)++;
@@ -383,20 +351,6 @@ read_crtr_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   return LIBSPECTRUM_ERROR_NONE;
 }
      
-static void
-set_opus_direction_inverted( libspectrum_snap *snap, int value )
-{
-  libspectrum_snap_set_opus_direction( snap, !value );
-}
-
-/* The flag decompositions for the OPUS chunk */
-static struct flag_decomposition opus_flags_decompositions[] = {
-  { LIBSPECTRUM_ZXSTOPUSF_PAGED, libspectrum_snap_set_opus_paged },
-  { LIBSPECTRUM_ZXSTOPUSF_SEEKLOWER, set_opus_direction_inverted },
-  { LIBSPECTRUM_ZXSTOPUSF_CUSTOMROM, libspectrum_snap_set_opus_custom_rom },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_opus_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte **buffer,
@@ -420,7 +374,7 @@ read_opus_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_opus_active( snap, 1 );
 
   flags = libspectrum_read_dword( buffer );
-  decompose_flags( snap, flags, opus_flags_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_opus_flags );
 
   disc_ram_length = libspectrum_read_dword( buffer );
   disc_rom_length = libspectrum_read_dword( buffer );
@@ -586,19 +540,6 @@ read_opus_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   return LIBSPECTRUM_ERROR_NONE;
 }
      
-static void
-set_plusd_direction_inverted( libspectrum_snap *snap, int value )
-{
-  libspectrum_snap_set_plusd_direction( snap, !value );
-}
-
-/* The flag decompositions for the PLSD chunk */
-static struct flag_decomposition plusd_flags_decompositions[] = {
-  { LIBSPECTRUM_ZXSTPLUSDF_PAGED, libspectrum_snap_set_plusd_paged },
-  { LIBSPECTRUM_ZXSTPLUSDF_SEEKLOWER, set_plusd_direction_inverted },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_plsd_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		  const libspectrum_byte **buffer,
@@ -625,7 +566,7 @@ read_plsd_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_plusd_active( snap, 1 );
 
   flags = libspectrum_read_dword( buffer );
-  decompose_flags( snap, flags, plusd_flags_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_plusd_flags );
 
   disc_ram_length = libspectrum_read_dword( buffer );
   disc_rom_length = libspectrum_read_dword( buffer );
@@ -962,12 +903,6 @@ read_joy_chunk( libspectrum_snap *snap, libspectrum_word version,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* The flag decompositions for the KEYB chunk */
-static struct flag_decomposition keyb_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTKF_ISSUE2, libspectrum_snap_set_issue2 },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_keyb_chunk( libspectrum_snap *snap, libspectrum_word version,
 		 const libspectrum_byte **buffer,
@@ -987,7 +922,7 @@ read_keyb_chunk( libspectrum_snap *snap, libspectrum_word version,
   }
 
   flags = libspectrum_read_dword( buffer );
-  decompose_flags( snap, flags, keyb_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_keyb_flags );
 
   if( expected_length >= 5 ) {
     switch( **buffer ) {
@@ -1222,13 +1157,6 @@ read_z80r_chunk( libspectrum_snap *snap, libspectrum_word version,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* The flag decompositions for the ZXAT chunk */
-static struct flag_decomposition zxat_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTZXATF_UPLOAD, libspectrum_snap_set_zxatasp_upload },
-  { LIBSPECTRUM_ZXSTZXATF_WRITEPROTECT, libspectrum_snap_set_zxatasp_writeprotect },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_zxat_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte **buffer,
@@ -1247,7 +1175,7 @@ read_zxat_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_zxatasp_active( snap, 1 );
 
   flags = libspectrum_read_word( buffer );
-  decompose_flags( snap, flags, zxat_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_zxat_flags );
 
   libspectrum_snap_set_zxatasp_port_a( snap, **buffer ); (*buffer)++;
   libspectrum_snap_set_zxatasp_port_b( snap, **buffer ); (*buffer)++;
@@ -1258,12 +1186,6 @@ read_zxat_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 
   return LIBSPECTRUM_ERROR_NONE;
 }
-
-/* The flag decompositions for the ZXCF chunk */
-static struct flag_decomposition zxcf_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTZXCFF_UPLOAD, libspectrum_snap_set_zxcf_upload },
-  { 0, 0 }
-};
 
 static libspectrum_error
 read_zxcf_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
@@ -1283,20 +1205,13 @@ read_zxcf_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_zxcf_active( snap, 1 );
 
   flags = libspectrum_read_word( buffer );
-  decompose_flags( snap, flags, zxcf_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_zxcf_flags );
 
   libspectrum_snap_set_zxcf_memctl( snap, **buffer ); (*buffer)++;
   libspectrum_snap_set_zxcf_pages( snap, **buffer ); (*buffer)++;
 
   return LIBSPECTRUM_ERROR_NONE;
 }
-
-/* The flag decompositions for the IF1 chunk */
-static struct flag_decomposition if1_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTIF1F_ENABLED, libspectrum_snap_set_interface1_active },
-  { LIBSPECTRUM_ZXSTIF1F_PAGED, libspectrum_snap_set_interface1_paged },
-  { 0, 0 }
-};
 
 static libspectrum_error
 read_if1_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
@@ -1318,7 +1233,7 @@ read_if1_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   }
 
   flags = libspectrum_read_word( buffer );
-  decompose_flags( snap, flags, if1_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_if1_flags );
 
   libspectrum_snap_set_interface1_drive_count( snap, **buffer ); (*buffer)++;
   *buffer += 3;		/* Skip reserved byte space */
@@ -1468,12 +1383,6 @@ read_rom_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   return retval;
 }
 
-/* The flag decompositions for the ZXPR chunk */
-static struct flag_decomposition zxpr_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTPRF_ENABLED, libspectrum_snap_set_zx_printer_active },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_zxpr_chunk( libspectrum_snap *snap, libspectrum_word version,
 		 const libspectrum_byte **buffer,
@@ -1490,7 +1399,7 @@ read_zxpr_chunk( libspectrum_snap *snap, libspectrum_word version,
   }
 
   flags = libspectrum_read_word( buffer );
-  decompose_flags( snap, flags, zxpr_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_zxpr_flags );
 
   return LIBSPECTRUM_ERROR_NONE;
 }
@@ -1586,13 +1495,6 @@ read_dock_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* The flag decompositions for the DIDE chunk */
-static struct flag_decomposition dide_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTDIVIDE_EPROM_WRITEPROTECT, libspectrum_snap_set_divide_eprom_writeprotect },
-  { LIBSPECTRUM_ZXSTDIVIDE_PAGED, libspectrum_snap_set_divide_paged },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_dide_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte **buffer,
@@ -1614,7 +1516,7 @@ read_dide_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_divide_active( snap, 1 );
 
   flags = libspectrum_read_word( buffer );
-  decompose_flags( snap, flags, dide_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_dide_flags );
 
   libspectrum_snap_set_divide_control( snap, **buffer ); (*buffer)++;
   libspectrum_snap_set_divide_pages( snap, **buffer ); (*buffer)++;
@@ -1689,19 +1591,6 @@ read_snet_memory( libspectrum_snap *snap, const libspectrum_byte **buffer,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* The flag decompositions for the SNET chunk */
-static struct flag_decomposition snet_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTSNET_PAGED, libspectrum_snap_set_spectranet_paged },
-  { LIBSPECTRUM_ZXSTSNET_PAGED_VIA_IO, libspectrum_snap_set_spectranet_paged_via_io },
-  { LIBSPECTRUM_ZXSTSNET_PROGRAMMABLE_TRAP_ACTIVE, libspectrum_snap_set_spectranet_programmable_trap_active },
-  { LIBSPECTRUM_ZXSTSNET_PROGRAMMABLE_TRAP_MSB, libspectrum_snap_set_spectranet_programmable_trap_msb },
-  { LIBSPECTRUM_ZXSTSNET_ALL_DISABLED, libspectrum_snap_set_spectranet_all_traps_disabled },
-  { LIBSPECTRUM_ZXSTSNET_RST8_DISABLED, libspectrum_snap_set_spectranet_rst8_trap_disabled },
-  { LIBSPECTRUM_ZXSTSNET_DENY_DOWNSTREAM_A15, libspectrum_snap_set_spectranet_deny_downstream_a15 },
-  { LIBSPECTRUM_ZXSTSNET_NMI_FLIPFLOP, libspectrum_snap_set_spectranet_nmi_flipflop },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_snet_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
 		 const libspectrum_byte **buffer,
@@ -1722,7 +1611,7 @@ read_snet_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   libspectrum_snap_set_spectranet_active( snap, 1 );
 
   flags = libspectrum_read_word( buffer );
-  decompose_flags( snap, flags, snet_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_snet_flags );
 
   libspectrum_snap_set_spectranet_page_a( snap, **buffer ); (*buffer)++;
   libspectrum_snap_set_spectranet_page_b( snap, **buffer ); (*buffer)++;
@@ -1802,15 +1691,6 @@ read_sner_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   return LIBSPECTRUM_ERROR_NONE;
 }
 
-/* The flag decompositions for the MFCE chunk */
-static struct flag_decomposition mfce_flag_decompositions[] = {
-  { LIBSPECTRUM_ZXSTMF_PAGEDIN, libspectrum_snap_set_multiface_paged },
-  { LIBSPECTRUM_ZXSTMF_SOFTWARELOCKOUT, libspectrum_snap_set_multiface_software_lockout },
-  { LIBSPECTRUM_ZXSTMF_REDBUTTONDISABLED, libspectrum_snap_set_multiface_red_button_disabled },
-  { LIBSPECTRUM_ZXSTMF_DISABLED, libspectrum_snap_set_multiface_disabled },
-  { 0, 0 }
-};
-
 static libspectrum_error
 read_mfce_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
                  const libspectrum_byte **buffer,
@@ -1851,7 +1731,7 @@ read_mfce_chunk( libspectrum_snap *snap, libspectrum_word version GCC_UNUSED,
   }
 
   flags = **buffer; (*buffer)++;
-  decompose_flags( snap, flags, mfce_flag_decompositions );
+  decompose_flags( snap, flags, libspectrum_szx_mfce_flags );
 
   expected_ram_length = flags & LIBSPECTRUM_ZXSTMF_16KRAMMODE ? 0x4000 : 0x2000;
   disc_ram_length = data_length - 2;

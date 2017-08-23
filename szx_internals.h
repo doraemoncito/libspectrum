@@ -71,6 +71,19 @@ extern const size_t libspectrum_szx_signature_length;
 
 static const libspectrum_byte ZXSTMF_ALTERNATETIMINGS = 1;
 
+/* How to (de)compose a flags field */
+struct libspectrum_szx_flag_composition {
+  /* The single bit */
+  libspectrum_dword flag;
+
+  /* The function to call to get the current value for this setting */
+  int (*getter)( libspectrum_snap *snap );
+
+  /* The function to call to set the current value for this setting */
+  void (*setter)( libspectrum_snap *snap, int value );
+};
+
+/* Decompose a flags field, calling the appropriate setters */
 /* Constants etc for each chunk type */
 
 #define LIBSPECTRUM_ZXSTBID_MOUSE "AMXM"
@@ -80,6 +93,7 @@ static const libspectrum_byte ZXSTMF_ALTERNATETIMINGS = 1;
 #define LIBSPECTRUM_ZXSTBID_AY "AY\0\0"
 #define LIBSPECTRUM_ZXSTAYF_FULLERBOX 1
 #define LIBSPECTRUM_ZXSTAYF_128AY 2
+extern struct libspectrum_szx_flag_composition libspectrum_szx_ay_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_BETA128 "B128"
 #define LIBSPECTRUM_ZXSTBETAF_CONNECTED 1
@@ -88,6 +102,7 @@ static const libspectrum_byte ZXSTMF_ALTERNATETIMINGS = 1;
 #define LIBSPECTRUM_ZXSTBETAF_AUTOBOOT 8
 #define LIBSPECTRUM_ZXSTBETAF_SEEKLOWER 16
 #define LIBSPECTRUM_ZXSTBETAF_COMPRESSED 32
+extern struct libspectrum_szx_flag_composition libspectrum_szx_b128_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_BETADISK "BDSK"
 
@@ -101,6 +116,7 @@ static const libspectrum_byte ZXSTMF_ALTERNATETIMINGS = 1;
 #define LIBSPECTRUM_ZXSTDIVIDE_EPROM_WRITEPROTECT 1
 #define LIBSPECTRUM_ZXSTDIVIDE_PAGED 2
 #define LIBSPECTRUM_ZXSTDIVIDE_COMPRESSED 4
+extern struct libspectrum_szx_flag_composition libspectrum_szx_dide_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_DIVIDERAMPAGE "DIRP"
 
@@ -120,6 +136,7 @@ extern const libspectrum_word LIBSPECTRUM_ZXSTDOCKF_EXROMDOCK;
 #define LIBSPECTRUM_ZXSTIF1F_ENABLED 1
 #define LIBSPECTRUM_ZXSTIF1F_COMPRESSED 2
 #define LIBSPECTRUM_ZXSTIF1F_PAGED 4
+extern struct libspectrum_szx_flag_composition libspectrum_szx_if1_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_IF2ROM "IF2R"
 
@@ -128,6 +145,7 @@ static const libspectrum_dword ZXSTJOYF_ALWAYSPORT31 = 1;
 
 #define LIBSPECTRUM_ZXSTBID_KEYBOARD "KEYB"
 #define LIBSPECTRUM_ZXSTKF_ISSUE2 1
+extern struct libspectrum_szx_flag_composition libspectrum_szx_keyb_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_LECRAMPAGE "LCRP"
 extern const libspectrum_word ZXSTLCRPF_COMPRESSED;
@@ -144,6 +162,8 @@ extern const libspectrum_word ZXSTLECF_PAGED;
 #define LIBSPECTRUM_ZXSTMF_REDBUTTONDISABLED 8
 #define LIBSPECTRUM_ZXSTMF_DISABLED 16
 #define LIBSPECTRUM_ZXSTMF_16KRAMMODE 32
+extern struct libspectrum_szx_flag_composition libspectrum_szx_mfce_flags[];
+
 extern const libspectrum_byte LIBSPECTRUM_ZXSTMFM_1;
 extern const libspectrum_byte LIBSPECTRUM_ZXSTMFM_128;
 
@@ -154,11 +174,14 @@ extern const libspectrum_byte LIBSPECTRUM_ZXSTMFM_128;
 #define LIBSPECTRUM_ZXSTOPUSF_COMPRESSED 2
 #define LIBSPECTRUM_ZXSTOPUSF_SEEKLOWER 4
 #define LIBSPECTRUM_ZXSTOPUSF_CUSTOMROM 8
+extern struct libspectrum_szx_flag_composition libspectrum_szx_opus_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_PLUSD "PLSD"
 #define LIBSPECTRUM_ZXSTPLUSDF_PAGED 1
 #define LIBSPECTRUM_ZXSTPLUSDF_COMPRESSED 2
 #define LIBSPECTRUM_ZXSTPLUSDF_SEEKLOWER 4
+extern struct libspectrum_szx_flag_composition libspectrum_szx_plusd_flags[];
+
 extern const libspectrum_byte LIBSPECTRUM_ZXSTPDRT_GDOS;
 extern const libspectrum_byte LIBSPECTRUM_ZXSTPDRT_UNIDOS;
 extern const libspectrum_byte LIBSPECTRUM_ZXSTPDRT_CUSTOM;
@@ -192,6 +215,7 @@ extern const libspectrum_byte LIBSPECTRUM_ZXSTSNER_RAM_COMPRESSED;
 #define LIBSPECTRUM_ZXSTSNET_RST8_DISABLED 32
 #define LIBSPECTRUM_ZXSTSNET_DENY_DOWNSTREAM_A15 64
 #define LIBSPECTRUM_ZXSTSNET_NMI_FLIPFLOP 128
+extern struct libspectrum_szx_flag_composition libspectrum_szx_snet_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_SPECREGS "SPCR"
 
@@ -207,12 +231,15 @@ extern const libspectrum_byte LIBSPECTRUM_ZXSTZF_FSET;
 #define LIBSPECTRUM_ZXSTBID_ZXATASP "ZXAT"
 #define LIBSPECTRUM_ZXSTZXATF_UPLOAD 1
 #define LIBSPECTRUM_ZXSTZXATF_WRITEPROTECT 2
+extern struct libspectrum_szx_flag_composition libspectrum_szx_zxat_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_ZXCF "ZXCF"
 #define LIBSPECTRUM_ZXSTZXCFF_UPLOAD 1
+extern struct libspectrum_szx_flag_composition libspectrum_szx_zxcf_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_ZXPRINTER "ZXPR"
 #define LIBSPECTRUM_ZXSTPRF_ENABLED 1
+extern struct libspectrum_szx_flag_composition libspectrum_szx_zxpr_flags[];
 
 #define LIBSPECTRUM_ZXSTBID_PLUS3DISK "+3\0\0"
 
