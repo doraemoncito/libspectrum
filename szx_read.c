@@ -811,6 +811,51 @@ add_joystick( libspectrum_snap *snap, libspectrum_joystick type, int inputs )
   libspectrum_snap_set_joystick_active_count( snap, num_joysticks + 1 );
 }
 
+/* A mapping from an SZX joystick type to a libspectrum joystick type */
+struct joystick_mapping {
+  /* The constant used in an SZX file */
+  libspectrum_szx_joystick_type szx;
+
+  /* The constant used in libspectrum */
+  libspectrum_joystick libspectrum;
+};
+
+/* The mappings from SZX joystick types to libspectrum joystick types */
+static struct joystick_mapping joystick_mappings[] = {
+  { LIBSPECTRUM_ZXJT_KEMPSTON, LIBSPECTRUM_JOYSTICK_KEMPSTON },
+  { LIBSPECTRUM_ZXJT_FULLER, LIBSPECTRUM_JOYSTICK_FULLER },
+  { LIBSPECTRUM_ZXJT_CURSOR, LIBSPECTRUM_JOYSTICK_CURSOR },
+  { LIBSPECTRUM_ZXJT_SINCLAIR1, LIBSPECTRUM_JOYSTICK_SINCLAIR_1 },
+  { LIBSPECTRUM_ZXJT_SINCLAIR2, LIBSPECTRUM_JOYSTICK_SINCLAIR_2 },
+  { LIBSPECTRUM_ZXJT_TIMEX1, LIBSPECTRUM_JOYSTICK_TIMEX_1 },
+  { LIBSPECTRUM_ZXJT_TIMEX2, LIBSPECTRUM_JOYSTICK_TIMEX_2 }
+};
+
+/* The size of the above array */
+static size_t joystick_mappings_count = ARRAY_SIZE(joystick_mappings);
+
+static void
+parse_joystick( libspectrum_snap *snap, const libspectrum_byte **buffer, int which )
+{
+  libspectrum_byte joystick = **buffer;
+  if( joystick != LIBSPECTRUM_ZXJT_NONE ) {
+    size_t i;
+    int done = 0;
+    for( i = 0; !done && i < joystick_mappings_count; i++ ) {
+      if( joystick == joystick_mappings[i].szx ) {
+        add_joystick( snap, joystick_mappings[i].libspectrum, which );
+        done = 1;
+      }
+    }
+
+    if( !done ) {
+      libspectrum_print_error( LIBSPECTRUM_ERROR_UNKNOWN,
+          "%s:unknown joystick %d", __FILE__, joystick );
+    }
+  }
+  (*buffer)++;
+}
+
 static libspectrum_error
 read_joy_chunk( libspectrum_snap *snap, libspectrum_word version,
 		 const libspectrum_byte **buffer,
@@ -832,73 +877,8 @@ read_joy_chunk( libspectrum_snap *snap, libspectrum_word version,
                   LIBSPECTRUM_JOYSTICK_INPUT_NONE );
   }
 
-  switch( **buffer ) {
-  case LIBSPECTRUM_ZXJT_KEMPSTON:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_KEMPSTON,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_FULLER:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_FULLER,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_CURSOR:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_CURSOR,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_SINCLAIR1:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_SINCLAIR_1,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_SINCLAIR2:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_SINCLAIR_2,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_TIMEX1:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_TIMEX_1,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_TIMEX2:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_TIMEX_2,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
-    break;
-  case LIBSPECTRUM_ZXJT_NONE:
-    break;
-  }
-  (*buffer)++;
-
-  switch( **buffer ) {
-  case LIBSPECTRUM_ZXJT_KEMPSTON:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_KEMPSTON,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_FULLER:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_FULLER,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_CURSOR:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_CURSOR,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_SINCLAIR1:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_SINCLAIR_1,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_SINCLAIR2:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_SINCLAIR_2,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_TIMEX1:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_TIMEX_1,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_TIMEX2:
-    add_joystick( snap, LIBSPECTRUM_JOYSTICK_TIMEX_2,
-                  LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
-    break;
-  case LIBSPECTRUM_ZXJT_NONE:
-    break;
-  }
-  (*buffer)++;
+  parse_joystick( snap, buffer, LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_1 );
+  parse_joystick( snap, buffer, LIBSPECTRUM_JOYSTICK_INPUT_JOYSTICK_2 );
 
   return LIBSPECTRUM_ERROR_NONE;
 }
