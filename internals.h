@@ -161,10 +161,16 @@ int libspectrum_split_to_48k_pages( libspectrum_snap *snap,
 #define SNAPSHOT_DOCK_EXROM_PAGES 8
 #define SNAPSHOT_JOYSTICKS 7
 #define SNAPSHOT_DIVIDE_PAGES 4
+#define SNAPSHOT_DIVMMC_PAGES 64
 
 /* Get memory for a snap */
 
 libspectrum_snap* libspectrum_snap_alloc_internal( void );
+
+libspectrum_error
+libspectrum_snap_write_buffer( libspectrum_buffer *buffer, int *out_flags,
+                               libspectrum_snap *snap, libspectrum_id_t type,
+                               libspectrum_creator *creator, int in_flags );
 
 /* Format specific snapshot routines */
 
@@ -175,8 +181,8 @@ libspectrum_error
 internal_sna_read( libspectrum_snap *snap,
 		   const libspectrum_byte *buffer, size_t buffer_length );
 libspectrum_error
-libspectrum_sna_write( libspectrum_byte **buffer, size_t *length,
-		       int *out_flags, libspectrum_snap *snap, int in_flags );
+libspectrum_sna_write( libspectrum_buffer *buffer, int *out_flags,
+                       libspectrum_snap *snap, int in_flags );
 libspectrum_error
 libspectrum_snp_read( libspectrum_snap *snap,
 		      const libspectrum_byte *buffer, size_t buffer_length );
@@ -187,15 +193,15 @@ libspectrum_error
 libspectrum_szx_read( libspectrum_snap *snap,
 		      const libspectrum_byte *buffer, size_t buffer_length );
 libspectrum_error
-libspectrum_szx_write( libspectrum_byte **buffer, size_t *length,
-		       int *out_flags, libspectrum_snap *snap,
-		       libspectrum_creator *creator, int in_flags );
+libspectrum_szx_write( libspectrum_buffer *buffer, int *out_flags,
+                       libspectrum_snap *snap, libspectrum_creator *creator,
+                       int in_flags );
 libspectrum_error
 internal_z80_read( libspectrum_snap *snap,
 		   const libspectrum_byte *buffer, size_t buffer_length );
 libspectrum_error
-libspectrum_z80_write2( libspectrum_byte **buffer, size_t *length,
-			int *out_flags, libspectrum_snap *snap, int in_flags );
+libspectrum_z80_write2( libspectrum_buffer *buffer, int *out_flags,
+                        libspectrum_snap *snap, int in_flags );
 libspectrum_error
 libspectrum_zxs_read( libspectrum_snap *snap,
 		      const libspectrum_byte *buffer, size_t buffer_length );
@@ -231,16 +237,15 @@ internal_tap_read( libspectrum_tape *tape, const libspectrum_byte *buffer,
 		   const size_t length, libspectrum_id_t type );
 
 libspectrum_error
-internal_tap_write( libspectrum_byte **buffer, size_t *length,
-		    libspectrum_tape *tape, libspectrum_id_t type );
+internal_tap_write( libspectrum_buffer *buffer, libspectrum_tape *tape,
+                    libspectrum_id_t type );
 
 libspectrum_error
 internal_tzx_read( libspectrum_tape *tape, const libspectrum_byte *buffer,
 		   const size_t length );
 
 libspectrum_error
-internal_tzx_write( libspectrum_byte **buffer, size_t *length,
-		    libspectrum_tape *tape );
+internal_tzx_write( libspectrum_buffer *buffer, libspectrum_tape *tape );
 
 libspectrum_error
 internal_warajevo_read( libspectrum_tape *tape,
@@ -255,8 +260,7 @@ libspectrum_csw_read( libspectrum_tape *tape,
                       const libspectrum_byte *buffer, size_t length );
 
 libspectrum_error
-libspectrum_csw_write( libspectrum_byte **buffer, size_t *length,
-                       libspectrum_tape *tape );
+libspectrum_csw_write( libspectrum_buffer *buffer, libspectrum_tape *tape );
 
 libspectrum_error
 libspectrum_wav_read( libspectrum_tape *tape, const char *filename );
@@ -274,6 +278,63 @@ libspectrum_error
 libspectrum_tape_get_next_edge_internal( libspectrum_dword *tstates, int *flags,
                                          libspectrum_tape *tape,
                                          libspectrum_tape_block_state *it );
+/* Disk routines */
+
+typedef struct libspectrum_hdf_header {
+
+  libspectrum_byte signature[0x06];
+  libspectrum_byte id;
+  libspectrum_byte revision;
+  libspectrum_byte flags;
+  libspectrum_byte datastart_low;
+  libspectrum_byte datastart_hi;
+  libspectrum_byte reserved[0x0b];
+  libspectrum_byte drive_identity[0x6a];
+
+} libspectrum_hdf_header;
+  
+typedef struct libspectrum_ide_drive {
+
+  /* HDF filepointer and information */
+  FILE *disk;
+  libspectrum_word data_offset;
+  libspectrum_word sector_size;
+  libspectrum_hdf_header hdf;
+  
+  /* Drive geometry */
+  int cylinders;
+  int heads;
+  int sectors;
+
+  libspectrum_byte error;
+  libspectrum_byte status;
+  
+} libspectrum_ide_drive;
+
+libspectrum_error
+libspectrum_ide_insert_into_drive( libspectrum_ide_drive *drv,
+                                   const char *filename );
+
+libspectrum_error
+libspectrum_ide_eject_from_drive( libspectrum_ide_drive *drv,
+                                  GHashTable *cache );
+
+int
+libspectrum_ide_read_sector_from_hdf(
+    libspectrum_ide_drive *drv,
+    GHashTable *cache,
+    libspectrum_dword sector_number,
+    libspectrum_byte *dest );
+
+void
+libspectrum_ide_write_sector_to_hdf(
+    libspectrum_ide_drive *drv,
+    GHashTable *cache,
+    libspectrum_dword sector_number,
+    libspectrum_byte *src );
+
+void
+libspectrum_ide_commit_drive( libspectrum_ide_drive *drv, GHashTable *cache );
 
 /* Crypto functions */
 

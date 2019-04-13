@@ -1,4 +1,4 @@
-libspectrum 1.3.2
+libspectrum 1.4.4
 =================
 
 libspectrum is a fairly simple library designed to make the handling
@@ -277,6 +277,8 @@ the following values:
 
 LIBSPECTRUM_ID_UNKNOWN		Couldn't identify this file
 
+LIBSPECTRUM_ID_AUX_POK		A .pok poke file
+
 LIBSPECTRUM_ID_CARTRIDGE_DCK	A .dck Timex dock image
 LIBSPECTRUM_ID_CARTRIDGE_IF2	A .rom Interface 2 cartridge
 
@@ -284,10 +286,14 @@ LIBSPECTRUM_ID_COMPRESSED_BZ2	A bzip2 compressed file
 LIBSPECTRUM_ID_COMPRESSED_GZ	A gzip compressed file
 LIBSPECTRUM_ID_COMPRESSED_ZIP	A zip compressed file
 
+LIBSPECTRUM_ID_DISK_D80		A .d80 or .d40 Didaktik 80/40 disk file
 LIBSPECTRUM_ID_DISK_DSK		A .dsk +3 disk file
 LIBSPECTRUM_ID_DISK_CPC		A plain .dsk +3 disk file
 LIBSPECTRUM_ID_DISK_ECPC	An extended .dsk +3 disk file
 LIBSPECTRUM_ID_DISK_FDI		A .fdi generic disk file
+LIBSPECTRUM_ID_DISK_IMG		A .img DISCiPLE/+D disk file
+LIBSPECTRUM_ID_DISK_MGT		A .mgt DISCiPLE/+D disk file
+LIBSPECTRUM_ID_DISK_OPD		A .opd or .opu Opus Discovery disk file
 LIBSPECTRUM_ID_DISK_SAD		A .sad generic disk file
 LIBSPECTRUM_ID_DISK_SCL		A .scl TRDOS disk file
 LIBSPECTRUM_ID_DISK_TRD		A .trd TRDOS disk file
@@ -351,10 +357,13 @@ which returns the type of file represented by the `type' parameter in
 
 LIBSPECTRUM_CLASS_UNKNOWN		An unknown file type
 
+LIBSPECTRUM_CLASS_AUXILIARY		An auxiliary file
 LIBSPECTRUM_CLASS_CARTRIDGE_TIMEX	A Timex dock cartridge
 LIBSPECTRUM_CLASS_CARTRIDGE_IF2		An Interface 2 cartridge
+LIBSPECTRUM_CLASS_DISK_DIDAKTIK	A Didaktik 80/40 disk image
 LIBSPECTRUM_CLASS_DISK_GENERIC		A generic disk image
-LIBSPECTRUM_CLASS_DISK_PLUSD		An MGT/+D disk image
+LIBSPECTRUM_CLASS_DISK_OPUS		An Opus Discovery disk image
+LIBSPECTRUM_CLASS_DISK_PLUSD		A DISCiPLE/+D disk image
 LIBSPECTRUM_CLASS_DISK_PLUS3		A +3 disk image
 LIBSPECTRUM_CLASS_DISK_TRDOS		A TRDOS disk image
 LIBSPECTRUM_CLASS_HARDDISK		An IDE hard disk image
@@ -749,6 +758,20 @@ The available properties (along with their types) are:
 * size_t didaktik80_rom_length[1];
 * libspectrum_byte* didaktik80_ram[1];
 
+* int covox_active
+* libspectrum_byte covox_dac
+
+* int multiface_active;
+* int multiface_paged;
+* int multiface_model_one;
+* int multiface_model_128;
+* int multiface_model_3;
+* int multiface_disabled;
+* int multiface_software_lockout;
+* int multiface_red_button_disabled;
+* libspectrum_byte* multiface_ram[1];
+* size_t multiface_ram_length[1];
+
 Most of those should be fairly self-explanatory; those which may not
 be are:
 
@@ -1035,6 +1058,13 @@ libspectrum_tape_iterator_next( libspectrum_tape_iterator *iterator )
 Make the already initialised `iterator' point to the next block of
 `tape' and return that block (or NULL if there are no more blocks).
 
+libspectrum_tape_block *
+libspectrum_tape_iterator_peek_next( libspectrum_tape_iterator iterator )
+
+Make the already initialised `iterator' return the next block of
+`tape' (or NULL if there are no more blocks). The position of the `iterator'
+is not modified.
+
 Tape blocks
 -----------
 
@@ -1194,7 +1224,7 @@ size_t count				PURE_TONE
 libspectrum_byte* data			CUSTOM
 					PURE_DATA
 					RAW_DATA
-					ROW
+					ROM
 					TURBO
 					DATA_BLOCK
 
@@ -2062,6 +2092,64 @@ Returns an integer with bitwise ORed flags:
   LIBSPECTRUM_DISK_ID_NOTMATCH -> ID(track num) not match real track num
   LIBSPECTRUM_DISK_SECLEN_VARI -> not equal length sectors
   LIBSPECTRUM_DISK_DDAM -> there are deleted sectors
+
+MMC / SD card images
+====================
+
+Libspectrum contains various routines for handling MMC / SD card images. Due
+to the (potential) large size of these files, hard disk images are not handled
+entirely in memory as are the other file types, but require a real file.
+
+Libspectrum re-uses the existing HDF file format for MMC / SD card images, and
+emulates all cards as an SDHC card in SPI mode.
+
+libspectrum_mmc_card*
+libspectrum_mmc_alloc( void )
+
+Allocate a new MMC card image.
+
+void
+libspectrum_mmc_free( libspectrum_mmc_card *card )
+
+Deallocate the MMC card image in `card'.
+
+libspectrum_error
+libspectrum_mmc_insert( libspectrum_mmc_card *card, const char *filename );
+
+Cause the MMC / SD card image in `filename' to be attached to `card'.
+
+void
+libspectrum_mmc_commit( libspectrum_mmc_card *card )
+
+Cause any changes made to the image attached to `card' to be written back to
+the image.
+
+void
+libspectrum_mmc_eject( libspectrum_mmc_card *card )
+
+Cause the image attached to `card' to be detached. Note that any changes made
+to the image will be lost unless `libspectrum_mmc_commit' is called first.
+
+void
+libspectrum_mmc_reset( libspectrum_mmc_card *card )
+
+Reset the card `card'.
+
+int
+libspectrum_mmc_dirty( libspectrum_mmc_card *card )
+
+Returns non-zero if any changes have been made to `card' since
+`libspectrum_mmc_commit' was last called (or when the image was first loaded).
+
+libspectrum_byte
+libspectrum_mmc_read( libspectrum_mmc_card *card )
+
+Read the next byte from the SPI bus for `card'.
+
+void
+libspectrum_mmc_write( libspectrum_mmc_card *card, libspectrum_byte data )
+
+Write the byte `data` to the SPI bus for `card'.
 
 Thread Safety
 =============

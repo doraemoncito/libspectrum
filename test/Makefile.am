@@ -19,10 +19,11 @@
 ##
 ## E-mail: philip-fuse@shadowmagic.org.uk
 
-noinst_PROGRAMS += test/test
+check_PROGRAMS = test/test
 
 test_test_SOURCES = \
 	test/edges.c \
+	test/szx.c \
 	test/test.c \
 	test/test_edges.c
 
@@ -42,7 +43,7 @@ EXTRA_DIST += \
 	test/complete-tzx.pl \
 	test/empty-drb.tzx \
 	test/empty.csw \
-        test/empty.szx \
+	test/empty.szx \
 	test/empty.z80 \
 	test/invalid-archiveinfo.tzx \
 	test/invalid-custominfo.tzx \
@@ -58,8 +59,30 @@ EXTRA_DIST += \
 	test/loopend.tzx \
 	test/no-pilot-gdb.tzx \
 	test/plus3.z80 \
+	test/random.szx \
 	test/sp-2000.sna.gz \
 	test/sp-ffff.sna.gz \
+	test/standard-tap.tap \
+	test/szx-chunks/AMXM.szx \
+	test/szx-chunks/ATRP.szx \
+	test/szx-chunks/ATRP-uncompressed.szx.gz \
+	test/szx-chunks/AY.szx \
+	test/szx-chunks/CFRP.szx \
+	test/szx-chunks/CFRP-uncompressed.szx.gz \
+	test/szx-chunks/COVX.szx \
+	test/szx-chunks/DRUM.szx \
+	test/szx-chunks/JOY.szx \
+	test/szx-chunks/KEYB.szx \
+	test/szx-chunks/RAMP.szx \
+	test/szx-chunks/RAMP-uncompressed.szx.gz \
+	test/szx-chunks/SCLD.szx \
+	test/szx-chunks/SIDE.szx \
+	test/szx-chunks/SPCR.szx \
+	test/szx-chunks/Z80R.szx \
+	test/szx-chunks/ZMMC.szx \
+	test/szx-chunks/ZXAT.szx \
+	test/szx-chunks/ZXCF.szx \
+	test/szx-chunks/ZXPR.szx \
 	test/turbo-zeropilot.tzx \
 	test/writeprotected.mdr \
 	test/zero-tail.pzx

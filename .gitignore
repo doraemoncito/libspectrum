@@ -19,6 +19,7 @@
 /install-sh
 .libs
 /libspectrum.h
+/libspectrum.pc
 /libspectrum.la
 /libspectrum.qpg
 /libtool
@@ -36,13 +37,17 @@
 /missing
 /mkinstalldirs
 *.o
+*.orig
+*.rej
 /snap_accessors.c
 /stamp-h
 /stamp-h1
 /stamp-h.in
+*.swp
 /tags
 /tape_accessors.c
 /tape_set.c
 /test/complete-tzx.tzx
 /test/test
 /test/test.exe
+.vscode

@@ -1,5 +1,5 @@
 /* libspectrum.h: the library for dealing with ZX Spectrum emulator files
-   Copyright (c) 2001-2015 Philip Kendall, Darren Salt, Fredrick Meunier
+   Copyright (c) 2001-2018 Philip Kendall, Darren Salt, Fredrick Meunier
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -247,6 +247,14 @@ typedef enum libspectrum_id_t {
 
   LIBSPECTRUM_ID_COMPRESSED_ZIP,	/* zip compressed file */
 
+  /* Below here, present only in 1.3.5 and later */
+
+  LIBSPECTRUM_ID_SCREEN_SCR,		/* .scr screen file */
+
+  /* Below here, present only in 1.4.0 and later */
+
+  LIBSPECTRUM_ID_SCREEN_MLT,		/* .mlt screen file */
+
 } libspectrum_id_t;
 
 /* And 'classes' of file */
@@ -291,7 +299,57 @@ typedef enum libspectrum_class_t {
 
   LIBSPECTRUM_CLASS_DISK_DIDAKTIK,	/* Didaktik disk */
 
+  /* Below here, present only in 1.3.5 and later */
+
+  LIBSPECTRUM_CLASS_SCREENSHOT,		/* Screenshot */
+
 } libspectrum_class_t;
+
+typedef struct libspectrum_buffer libspectrum_buffer;
+
+WIN32_DLL libspectrum_buffer*
+libspectrum_buffer_alloc( void );
+WIN32_DLL void
+libspectrum_buffer_reallocate( libspectrum_buffer *buffer, size_t new_size );
+WIN32_DLL void
+libspectrum_buffer_free( libspectrum_buffer *buffer );
+
+WIN32_DLL int
+libspectrum_buffer_is_empty( const libspectrum_buffer *buffer );
+WIN32_DLL int
+libspectrum_buffer_is_not_empty( const libspectrum_buffer *buffer );
+
+WIN32_DLL void
+libspectrum_buffer_write_byte( libspectrum_buffer *buffer,
+                               libspectrum_byte data );
+WIN32_DLL void
+libspectrum_buffer_write_word( libspectrum_buffer *buffer,
+                               libspectrum_word data );
+WIN32_DLL void
+libspectrum_buffer_write_dword( libspectrum_buffer *buffer,
+                                libspectrum_dword data );
+WIN32_DLL void
+libspectrum_buffer_write_buffer( libspectrum_buffer *dest,
+                                 const libspectrum_buffer *src );
+WIN32_DLL void
+libspectrum_buffer_write( libspectrum_buffer *buffer, const void *data,
+                          size_t size );
+WIN32_DLL void
+libspectrum_buffer_set( libspectrum_buffer *buffer, libspectrum_byte value,
+                        size_t size );
+
+WIN32_DLL size_t
+libspectrum_buffer_get_data_size( const libspectrum_buffer *buffer );
+WIN32_DLL libspectrum_byte*
+libspectrum_buffer_get_data( const libspectrum_buffer *buffer );
+
+WIN32_DLL void
+libspectrum_buffer_clear( libspectrum_buffer *buffer );
+
+WIN32_DLL void
+libspectrum_buffer_append( libspectrum_byte **buffer, size_t *length,
+                           libspectrum_byte **ptr,
+                           const libspectrum_buffer *src );
 
 WIN32_DLL libspectrum_error
 libspectrum_identify_file( libspectrum_id_t *type, const char *filename,
@@ -482,7 +540,7 @@ libspectrum_snap_read( libspectrum_snap *snap, const libspectrum_byte *buffer,
 WIN32_DLL libspectrum_error
 libspectrum_snap_write( libspectrum_byte **buffer, size_t *length,
 			int *out_flags, libspectrum_snap *snap,
-	 		libspectrum_id_t type, libspectrum_creator *creator,
+			libspectrum_id_t type, libspectrum_creator *creator,
 			int in_flags );
 
 /* The flags that can be given to libspectrum_snap_write() */
@@ -714,6 +772,9 @@ libspectrum_tape_iterator_current( libspectrum_tape_iterator iterator );
 
 WIN32_DLL libspectrum_tape_block *
 libspectrum_tape_iterator_next( libspectrum_tape_iterator *iterator );
+
+WIN32_DLL libspectrum_tape_block *
+libspectrum_tape_iterator_peek_next( libspectrum_tape_iterator iterator );
 
 /*** Routines for handling the TZX generalised data block symbol table
      structure ***/
@@ -1331,6 +1392,37 @@ libspectrum_bitmap_test( const libspectrum_byte *b, const size_t n )
 {
   return b[ n / 8 ] & ( 1 << ( n % 8 ) );
 }
+
+/* MMC handling routines */
+
+typedef struct libspectrum_mmc_card libspectrum_mmc_card;
+
+WIN32_DLL libspectrum_mmc_card*
+libspectrum_mmc_alloc( void );
+
+WIN32_DLL void
+libspectrum_mmc_free( libspectrum_mmc_card *card );
+
+WIN32_DLL libspectrum_error
+libspectrum_mmc_insert( libspectrum_mmc_card *card, const char *filename );
+
+WIN32_DLL void
+libspectrum_mmc_eject( libspectrum_mmc_card *card );
+
+WIN32_DLL void
+libspectrum_mmc_reset( libspectrum_mmc_card *card );
+
+WIN32_DLL int
+libspectrum_mmc_dirty( libspectrum_mmc_card *card );
+
+WIN32_DLL void
+libspectrum_mmc_commit( libspectrum_mmc_card *card );
+
+WIN32_DLL libspectrum_byte
+libspectrum_mmc_read( libspectrum_mmc_card *card );
+
+WIN32_DLL void
+libspectrum_mmc_write( libspectrum_mmc_card *card, libspectrum_byte data );
 
 #ifdef __cplusplus
 };

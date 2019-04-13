@@ -206,6 +206,15 @@ struct libspectrum_snap {
   libspectrum_byte* divide_eprom[ 1 ];
   libspectrum_byte* divide_ram[ SNAPSHOT_DIVIDE_PAGES ];
 
+  /* DivMMC status */
+  int divmmc_active;
+  int divmmc_eprom_writeprotect;
+  int divmmc_paged;
+  libspectrum_byte divmmc_control;
+  size_t divmmc_pages;
+  libspectrum_byte* divmmc_eprom[ 1 ];
+  libspectrum_byte* divmmc_ram[ SNAPSHOT_DIVMMC_PAGES ];
+
   /* Fuller box status */
   int fuller_box_active;
 
@@ -276,6 +285,32 @@ struct libspectrum_snap {
   libspectrum_byte* didaktik80_rom[1];
   size_t didaktik80_rom_length[1];
   libspectrum_byte* didaktik80_ram[1];
+
+  /* Covox status */
+  int covox_active;
+  libspectrum_byte covox_dac;
+  
+  /* ULAplus emulation */
+  int ulaplus_active;
+  int ulaplus_palette_enabled;
+  libspectrum_byte ulaplus_current_register;
+  libspectrum_byte* ulaplus_palette[1];
+  libspectrum_byte ulaplus_ff_register;
+
+  /* Multiface One/128/3 emulation */
+  int multiface_active;
+  int multiface_paged;
+  int multiface_model_one;
+  int multiface_model_128;
+  int multiface_model_3;
+  int multiface_disabled;
+  int multiface_software_lockout;
+  int multiface_red_button_disabled;
+  libspectrum_byte* multiface_ram[1];
+  size_t multiface_ram_length[1];
+
+  /* ZXMMC status */
+  int zxmmc_active;
 };
 
 /* Initialise a libspectrum_snap structure */

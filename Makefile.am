@@ -1,5 +1,5 @@
 ## Process this file with automake to produce Makefile.in
-## Copyright (c) 2001-2016 Philip Kendall
+## Copyright (c) 2001-2018 Philip Kendall
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ ACLOCAL_AMFLAGS = -I m4
 lib_LTLIBRARIES = libspectrum.la
 
 libspectrum_la_SOURCES = bzip2.c \
+			 buffer.c \
 			 creator.c \
 			 crypto.c \
 			 csw.c \
@@ -35,6 +36,7 @@ libspectrum_la_SOURCES = bzip2.c \
 			 libspectrum.c \
                          memory.c \
 			 microdrive.c \
+			 mmc.c \
 			 plusd.c \
 			 pzx_read.c \
 			 rzx.c \
@@ -75,7 +77,7 @@ endif
 ## * Always increase the revision value.
 ## * Increase the age value only if the changes made to the ABI are backward
 ##   compatible.
-libspectrum_la_LDFLAGS = -version-info 12:5:4 -no-undefined @WINDRES_LDFLAGS@
+libspectrum_la_LDFLAGS = -version-info 16:14:8 -no-undefined @WINDRES_LDFLAGS@
 
 libspectrum_la_LIBADD = @AUDIOFILE_LIBS@ @GLIB_LIBS@ -lm
 
@@ -89,6 +91,10 @@ noinst_HEADERS = internals.h \
 
 noinst_PROGRAMS =
 noinst_DATA =
+
+# Install the pkg-config file; the directory is set using
+# PKG_INSTALLDIR in configure.ac.
+pkgconfig_DATA = libspectrum.pc
 
 AM_CFLAGS = -DLIBSPECTRUM_EXPORTS
 
@@ -117,6 +123,7 @@ windres.o: windres.rc
 AM_CPPFLAGS = @GLIB_CFLAGS@ @AUDIOFILE_CFLAGS@
 
 EXTRA_DIST = accessor.pl \
+	     buffer_license.txt \
 	     dll.c \
 	     generate.pl.in \
 	     m4/audiofile.m4 \
