@@ -1185,6 +1185,16 @@ libspectrum_disk_preformat( libspectrum_disk *d )
   buffer.len = 0;
   buffer.idx = 0;
 
+  if( d->sides == 2 ) {
+    if( trackgen( d, &buffer, 1, 0, 0xff, 1, 128,
+                  NO_PREINDEX, GAP_MINIMAL_MFM, NO_INTERLEAVE, 0xff ) )
+    return LIBSPECTRUM_DISK_GEOM;
+
+    if( trackgen( d, &buffer, 1, 2, 0xfe, 1, 128,
+                  NO_PREINDEX, GAP_MINIMAL_MFM, NO_INTERLEAVE, 0xff ) )
+    return LIBSPECTRUM_DISK_GEOM;
+  }
+
   if( trackgen( d, &buffer, 0, 0, 0xff, 1, 128,
                 NO_PREINDEX, GAP_MINIMAL_MFM, NO_INTERLEAVE, 0xff ) )
     return LIBSPECTRUM_DISK_GEOM;
