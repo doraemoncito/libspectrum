@@ -1248,7 +1248,8 @@ libspectrum_disk_new( libspectrum_disk *d, int sides, int cylinders,
 */
 WIN32_DLL libspectrum_disk_error_t
 libspectrum_disk_open( libspectrum_disk *disk, libspectrum_byte *buffer,
-                       size_t length );
+                       size_t length, libspectrum_disk_type_t type,
+                       const char *filename );
 
 /* merge two one sided disk (d1, d2) to a two sided one (d),
    after merge closes d1 and d2

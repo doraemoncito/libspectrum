@@ -1930,19 +1930,19 @@ LIBSPECTRUM_DISK_UDI is recommended.
 
 libspectrum_disk_error_t
 libspectrum_disk_open( libspectrum_disk *d, libspectrum_byte *buffer,
-                       size_t length )
+                       size_t length, libspectrum_disk_type_t type,
+                       const char *filename )
 
 Open a disk image from buffer. Identifies the disk type and rebuilds
 internally the disk geometry.
 
-Prior to the call to this function, some fields of libspectrum_disk should
-be set, e.g., the filename of the file (d->filename) and the type (d->type)
-of image. In the case of LIBSPECTRUM_DISK_TYPE_NONE, the format is guessed
+In the case of LIBSPECTRUM_DISK_TYPE_NONE type, the format is guessed
 from the filename extension in `filename' parameter.
 
 The geometry can be tune-up through flags (d->flag), e.g., if
-LIBSPECTRUM_DISK_FLAG_PREIDX is set and the disk type is not UDI, then
-a pre-index gap is generated with index mark (0xfc).
+LIBSPECTRUM_DISK_FLAG_PREIDX is set (prior to the call to this function)
+and the disk type is not UDI, then a pre-index gap is generated with
+index mark (0xfc).
 
 void
 libspectrum_disk_close( libspectrum_disk *d )

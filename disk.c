@@ -2353,27 +2353,44 @@ disk_update_tlens( libspectrum_disk *d )
  */
 libspectrum_disk_error_t
 libspectrum_disk_open( libspectrum_disk *d, libspectrum_byte *buffer,
-                       size_t length )
+                       size_t length, libspectrum_disk_type_t disk_type,
+                       const char *filename )
 {
   buffer_t b;
   libspectrum_id_t type;
+  size_t filename_length;
   int error;
 
   if( !d || !buffer ) return LIBSPECTRUM_DISK_BADPARAM;
+
+  d->data = NULL;
+  d->filename = NULL;
+  d->open_flag = 0; /* reset open flags */
+  d->type = disk_type;
+
+  if( filename ) {
+    filename_length = strlen( filename ) + 1;
+    d->filename = libspectrum_new( char, filename_length );
+    memcpy( d->filename, filename, filename_length );
+  }
+
+  /* TODO: open_log() */
+  if( ( d->type == LIBSPECTRUM_DISK_TYPE_NONE && d->filename == NULL ) ||
+        d->type >= LIBSPECTRUM_DISK_LOG ) {
+    libspectrum_free( d->filename ); d->filename = NULL;
+    return d->status = LIBSPECTRUM_DISK_UNKNOWN;
+  }
 
   b.idx = 0;
   b.data = buffer;
   b.len = length;
 
-  /* TODO: open_log() */
-  if( ( d->type == LIBSPECTRUM_DISK_TYPE_NONE && d->filename == NULL ) ||
-        d->type >= LIBSPECTRUM_DISK_LOG )
-    return d->status = LIBSPECTRUM_DISK_UNKNOWN;
-
   if( d->type == LIBSPECTRUM_DISK_TYPE_NONE ) {
     error = libspectrum_identify_file_raw( &type, d->filename, b.data, b.len );
-    if( error ) return d->status = LIBSPECTRUM_DISK_UNKNOWN;
-    d->type = LIBSPECTRUM_DISK_TYPE_NONE;
+    if( error ) {
+      libspectrum_free( d->filename ); d->filename = NULL;
+      return d->status = LIBSPECTRUM_DISK_UNKNOWN;
+    }
 
     switch( type ) {
     case LIBSPECTRUM_ID_DISK_UDI:
@@ -2401,11 +2418,10 @@ libspectrum_disk_open( libspectrum_disk *d, libspectrum_byte *buffer,
     case LIBSPECTRUM_ID_DISK_D80:
       d->type = LIBSPECTRUM_DISK_D80; break;
     default:
+      libspectrum_free( d->filename ); d->filename = NULL;
       return d->status = LIBSPECTRUM_DISK_UNKNOWN;
     }
   }
-
-  d->open_flag = 0; /* reset open flags */
 
   switch( d->type ) {
   case LIBSPECTRUM_DISK_UDI:
@@ -2440,14 +2456,13 @@ libspectrum_disk_open( libspectrum_disk *d, libspectrum_byte *buffer,
     open_d40_d80( &b, d );
     break;
   default:
-    return d->status = LIBSPECTRUM_DISK_UNKNOWN;
+    d->status = LIBSPECTRUM_DISK_UNKNOWN;
+    break;
   }
 
   if( d->status != LIBSPECTRUM_DISK_OK ) {
-    if( d->data != NULL ) {
-      libspectrum_free( d->data );
-      d->data = NULL;
-    }
+    libspectrum_free( d->data ); d->data = NULL;
+    libspectrum_free( d->filename ); d->filename = NULL;
     return d->status;
   }
 
@@ -3189,6 +3204,7 @@ libspectrum_disk_write( libspectrum_disk *d, libspectrum_byte **buffer,
   }
 
   if( d->status != LIBSPECTRUM_DISK_OK ) {
+    libspectrum_free( b.data );
     *buffer = NULL;
     *length = 0;
     return d->status;
